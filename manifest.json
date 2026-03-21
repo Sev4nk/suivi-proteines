@@ -1,0 +1,9 @@
+{
+  "name": "Suivi Proteines",
+  "short_name": "Proteines",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b3139",
+  "theme_color": "#0d4b57",
+  "description": "Mini app de suivi quotidien des proteines."
+}

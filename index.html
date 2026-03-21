@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d4b57">
+  <title>Suivi Proteines</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-bg" aria-hidden="true">
+    <div class="blob blob-a"></div>
+    <div class="blob blob-b"></div>
+    <div class="grid-noise"></div>
+  </div>
+
+  <main class="app-shell">
+    <header class="app-header">
+      <p class="eyebrow">Suivi quotidien</p>
+      <h1>Proteines</h1>
+      <p id="todayLabel" class="today-label"></p>
+    </header>
+
+    <section class="panel panel-total" aria-live="polite">
+      <div>
+        <p class="metric-label">Total du jour</p>
+        <p><span id="dailyTotal" class="metric-value">0</span><span class="metric-unit"> g</span></p>
+      </div>
+      <div>
+        <p class="metric-label">Objectif</p>
+        <p><span id="dailyTarget" class="metric-value">0</span><span class="metric-unit"> g</span></p>
+      </div>
+      <div>
+        <p class="metric-label">Progression</p>
+        <p><span id="progressPct" class="metric-value">0</span><span class="metric-unit"> %</span></p>
+      </div>
+      <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBarWrap">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </section>
+
+    <nav class="tab-nav" aria-label="Navigation principale">
+      <button class="tab-btn active" data-tab="journal">Journal</button>
+      <button class="tab-btn" data-tab="history">Historique</button>
+      <button class="tab-btn" data-tab="profile">Profil</button>
+    </nav>
+
+    <section id="tab-journal" class="tab-panel active">
+      <article class="panel">
+        <h2>Ajout rapide</h2>
+        <form id="entryForm" class="stack">
+          <label>
+            Aliment
+            <select id="foodSelect" required></select>
+          </label>
+
+          <div class="quantity-row">
+            <label>
+              Quantite
+              <input id="quantityInput" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex: 150" required>
+            </label>
+            <label>
+              Unite
+              <input id="unitLabel" type="text" readonly>
+            </label>
+          </div>
+
+          <div id="quickQty" class="quick-qty" aria-label="Quantites rapides"></div>
+
+          <button type="submit" class="btn-primary">Ajouter</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <h2>Prises du jour</h2>
+        <ul id="todayEntries" class="entry-list"></ul>
+      </article>
+    </section>
+
+    <section id="tab-history" class="tab-panel">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Historique</h2>
+          <div class="history-actions">
+            <button id="exportBtn" type="button" class="btn-secondary">Exporter</button>
+            <label for="importFile" class="btn-secondary file-btn">Importer</label>
+            <input id="importFile" type="file" accept="application/json" hidden>
+          </div>
+        </div>
+        <ul id="historyList" class="history-list"></ul>
+      </article>
+    </section>
+
+    <section id="tab-profile" class="tab-panel">
+      <article class="panel">
+        <h2>Profil</h2>
+        <form id="profileForm" class="stack">
+          <div class="quantity-row">
+            <label>
+              Taille (cm)
+              <input id="heightInput" type="number" min="100" max="250" step="1" inputmode="numeric" required>
+            </label>
+            <label>
+              Poids (kg)
+              <input id="weightInput" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
+            </label>
+          </div>
+
+          <div class="quantity-row">
+            <label>
+              Age
+              <input id="ageInput" type="number" min="12" max="100" step="1" inputmode="numeric" required>
+            </label>
+            <label>
+              Objectif
+              <select id="goalTypeSelect">
+                <option value="gain">Prise de masse</option>
+                <option value="maintain">Maintien</option>
+                <option value="cut">Perte de poids</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Mode objectif proteines
+            <select id="targetModeSelect">
+              <option value="manual">Manuel</option>
+              <option value="auto">Calcule automatique</option>
+            </select>
+          </label>
+
+          <label>
+            Objectif journalier (g)
+            <input id="manualTargetInput" type="number" min="40" max="400" step="1" inputmode="numeric" required>
+          </label>
+
+          <p id="autoHint" class="hint"></p>
+
+          <button type="submit" class="btn-primary">Enregistrer le profil</button>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <template id="entryItemTpl">
+    <li class="entry-item">
+      <div>
+        <p class="entry-title"></p>
+        <p class="entry-sub"></p>
+      </div>
+      <div class="entry-actions">
+        <p class="entry-protein"></p>
+        <button class="danger-link" type="button">Supprimer</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
