@@ -42,3 +42,19 @@ Option recommandee (pour service worker/PWA):
 
 - Donnees stockees uniquement localement dans ce navigateur.
 - Changer de navigateur/appareil ne transfere pas les donnees sans export/import.
+
+## GitHub (depot distant)
+
+1. Cree un nouveau depot vide sur GitHub, par exemple `suivi-proteines`.
+2. Dans ce dossier, execute:
+   - `git remote add origin https://github.com/<ton-user>/suivi-proteines.git`
+   - `git push -u origin main`
+
+## Publication Vercel
+
+1. Sur Vercel, clique `Add New...` puis `Project`.
+2. Importe le repo GitHub `suivi-proteines`.
+3. Framework preset: `Other`.
+4. Build command: laisser vide.
+5. Output directory: laisser vide.
+6. Deploy.
