@@ -1,10 +1,13 @@
-const CACHE_NAME = "protein-tracker-cache-v1";
+const CACHE_NAME = "protein-tracker-cache-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./icon.svg",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
