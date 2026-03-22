@@ -48,6 +48,63 @@
 
     <section id="tab-journal" class="tab-panel active">
       <article class="panel">
+        <div class="panel-head">
+          <h2>Recettes</h2>
+          <p class="hint">Repas types reutilisables en 1 clic.</p>
+        </div>
+
+        <form id="recipeBuilderForm" class="stack">
+          <div class="quantity-row">
+            <label>
+              Nom du repas
+              <input id="recipeNameInput" type="text" maxlength="80" placeholder="Ex: Petit dej proteiné" required>
+            </label>
+            <label>
+              Categorie
+              <select id="recipeCategorySelect" required>
+                <option value="breakfast">Petit dejeuner</option>
+                <option value="snack10">Collation 10h</option>
+                <option value="lunch">Repas midi</option>
+                <option value="snack16">Collation 16h</option>
+                <option value="dinner">Repas du soir</option>
+              </select>
+            </label>
+          </div>
+
+          <fieldset class="recipe-food-fieldset">
+            <legend>Ajouter un aliment a la recette</legend>
+            <div class="quantity-row">
+              <label>
+                Aliment
+                <select id="recipeFoodSelect" required></select>
+              </label>
+              <label>
+                Quantite
+                <input id="recipeQuantityInput" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex: 150" required>
+              </label>
+            </div>
+
+            <div class="quantity-row">
+              <label>
+                Unite
+                <input id="recipeUnitLabel" type="text" readonly>
+              </label>
+              <button id="addRecipeItemBtn" type="button" class="btn-secondary align-end">Ajouter aliment</button>
+            </div>
+
+            <div id="recipeQuickQty" class="quick-qty" aria-label="Quantites rapides recette"></div>
+          </fieldset>
+
+          <ul id="recipeDraftList" class="entry-list"></ul>
+
+          <button id="saveRecipeBtn" type="button" class="btn-primary">Enregistrer la recette</button>
+        </form>
+
+        <h3 class="subheading">Recettes enregistrees</h3>
+        <ul id="recipesList" class="history-list"></ul>
+      </article>
+
+      <article class="panel">
         <h2>Ajout rapide</h2>
         <form id="entryForm" class="stack">
           <label>
@@ -152,6 +209,19 @@
       <div class="entry-actions">
         <p class="entry-protein"></p>
         <button class="danger-link" type="button">Supprimer</button>
+      </div>
+    </li>
+  </template>
+
+  <template id="recipeSavedTpl">
+    <li class="history-card recipe-card">
+      <div>
+        <p class="history-date recipe-title"></p>
+        <p class="history-sub recipe-sub"></p>
+      </div>
+      <div class="recipe-actions">
+        <button class="btn-secondary use-recipe-btn" type="button">Ajouter au journal</button>
+        <button class="danger-link delete-recipe-btn" type="button">Supprimer</button>
       </div>
     </li>
   </template>

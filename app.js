@@ -23,6 +23,7 @@ const DEFAULT_STATE = {
     proteinTargetValue: 140
   },
   foods: DEFAULT_FOODS,
+  recipes: [],
   entriesByDate: {},
   lastFoodId: DEFAULT_FOODS[0].id
 };
@@ -39,7 +40,16 @@ const UNIT_LABELS = {
   scoop: "dose"
 };
 
+const RECIPE_CATEGORIES = {
+  breakfast: "Petit dejeuner",
+  snack10: "Collation 10h",
+  lunch: "Repas midi",
+  snack16: "Collation 16h",
+  dinner: "Repas du soir"
+};
+
 let state = loadState();
+let recipeDraftItems = [];
 
 const els = {
   todayLabel: document.getElementById("todayLabel"),
@@ -64,6 +74,19 @@ const els = {
   todayEntries: document.getElementById("todayEntries"),
   entryItemTpl: document.getElementById("entryItemTpl"),
 
+  recipeBuilderForm: document.getElementById("recipeBuilderForm"),
+  recipeNameInput: document.getElementById("recipeNameInput"),
+  recipeCategorySelect: document.getElementById("recipeCategorySelect"),
+  recipeFoodSelect: document.getElementById("recipeFoodSelect"),
+  recipeQuantityInput: document.getElementById("recipeQuantityInput"),
+  recipeUnitLabel: document.getElementById("recipeUnitLabel"),
+  recipeQuickQty: document.getElementById("recipeQuickQty"),
+  addRecipeItemBtn: document.getElementById("addRecipeItemBtn"),
+  recipeDraftList: document.getElementById("recipeDraftList"),
+  saveRecipeBtn: document.getElementById("saveRecipeBtn"),
+  recipesList: document.getElementById("recipesList"),
+  recipeSavedTpl: document.getElementById("recipeSavedTpl"),
+
   historyList: document.getElementById("historyList"),
   exportBtn: document.getElementById("exportBtn"),
   importFile: document.getElementById("importFile"),
@@ -82,6 +105,7 @@ init();
 
 function init() {
   renderFoodSelect();
+  renderRecipeFoodSelect();
   renderProfileForm();
   bindEvents();
   renderAll();
@@ -96,7 +120,11 @@ function bindEvents() {
   els.foodSelect.addEventListener("change", () => {
     state.lastFoodId = els.foodSelect.value;
     saveState();
-    updateUnitAndQuickQty();
+    updateFoodUiForForm(els.foodSelect, els.unitLabel, els.quickQty);
+  });
+
+  els.recipeFoodSelect.addEventListener("change", () => {
+    updateFoodUiForForm(els.recipeFoodSelect, els.recipeUnitLabel, els.recipeQuickQty);
   });
 
   els.quickQty.addEventListener("click", (event) => {
@@ -108,9 +136,45 @@ function bindEvents() {
     els.quantityInput.focus();
   });
 
+  els.recipeQuickQty.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-value]");
+    if (!button) {
+      return;
+    }
+    els.recipeQuantityInput.value = button.dataset.value;
+    els.recipeQuantityInput.focus();
+  });
+
   els.entryForm.addEventListener("submit", (event) => {
     event.preventDefault();
     addEntry();
+  });
+
+  els.addRecipeItemBtn.addEventListener("click", addRecipeDraftItem);
+
+  els.saveRecipeBtn.addEventListener("click", saveRecipeFromDraft);
+
+  els.recipeDraftList.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-draft-remove-id]");
+    if (!button) {
+      return;
+    }
+
+    recipeDraftItems = recipeDraftItems.filter((item) => item.id !== button.dataset.draftRemoveId);
+    renderRecipeDraft();
+  });
+
+  els.recipesList.addEventListener("click", (event) => {
+    const useBtn = event.target.closest("button[data-recipe-use-id]");
+    if (useBtn) {
+      addRecipeToToday(useBtn.dataset.recipeUseId);
+      return;
+    }
+
+    const deleteBtn = event.target.closest("button[data-recipe-delete-id]");
+    if (deleteBtn) {
+      removeRecipe(deleteBtn.dataset.recipeDeleteId);
+    }
   });
 
   els.todayEntries.addEventListener("click", (event) => {
@@ -161,32 +225,44 @@ function activateTab(tabName) {
 
 function renderAll() {
   els.todayLabel.textContent = toDisplayDate(todayKey());
-  updateUnitAndQuickQty();
+  renderRecipeFoodSelect();
+  updateFoodUiForForm(els.foodSelect, els.unitLabel, els.quickQty);
+  updateFoodUiForForm(els.recipeFoodSelect, els.recipeUnitLabel, els.recipeQuickQty);
   renderSummary();
+  renderRecipeDraft();
+  renderRecipes();
   renderTodayEntries();
   renderHistory();
 }
 
 function renderFoodSelect() {
+  renderFoodOptions(els.foodSelect, state.lastFoodId || state.foods[0].id);
+}
+
+function renderRecipeFoodSelect() {
+  renderFoodOptions(els.recipeFoodSelect, state.lastFoodId || state.foods[0].id);
+}
+
+function renderFoodOptions(selectEl, selectedId) {
   const options = state.foods
     .map((food) => `<option value="${food.id}">${food.name}</option>`)
     .join("");
 
-  els.foodSelect.innerHTML = options;
-  els.foodSelect.value = state.lastFoodId || state.foods[0].id;
+  selectEl.innerHTML = options;
+  selectEl.value = selectedId || state.foods[0].id;
 }
 
-function updateUnitAndQuickQty() {
-  const food = getSelectedFood();
+function updateFoodUiForForm(selectEl, unitLabelEl, quickQtyEl) {
+  const food = getFoodById(selectEl.value);
   if (!food) {
     return;
   }
 
-  els.unitLabel.value = UNIT_LABELS[food.unitType] || food.unitType;
+  unitLabelEl.value = UNIT_LABELS[food.unitType] || food.unitType;
 
   const quickValues = food.unitType === "g" ? [100, 150, 200] : [1, 2, 3];
-  els.quickQty.innerHTML = quickValues
-    .map((value) => `<button type="button" class="quick-chip" data-value="${value}">${value} ${els.unitLabel.value}</button>`)
+  quickQtyEl.innerHTML = quickValues
+    .map((value) => `<button type="button" class="quick-chip" data-value="${value}">${value} ${unitLabelEl.value}</button>`)
     .join("");
 }
 
@@ -321,14 +397,171 @@ function addEntry() {
     return;
   }
 
+  addEntryToDate(food, quantity, new Date());
+  state.lastFoodId = food.id;
+
+  saveState();
+  renderSummary();
+  renderTodayEntries();
+  renderHistory();
+
+  els.quantityInput.value = "";
+}
+
+function addRecipeDraftItem() {
+  const food = getFoodById(els.recipeFoodSelect.value);
+  if (!food) {
+    return;
+  }
+
+  const quantity = clampFloat(els.recipeQuantityInput.value, 0.1, 5000);
+  if (quantity <= 0) {
+    return;
+  }
+
+  recipeDraftItems.push({
+    id: makeId(),
+    foodId: food.id,
+    quantity,
+    unitType: food.unitType,
+    proteinComputed: computeProtein(food, quantity)
+  });
+
+  els.recipeQuantityInput.value = "";
+  renderRecipeDraft();
+}
+
+function renderRecipeDraft() {
+  if (recipeDraftItems.length === 0) {
+    els.recipeDraftList.innerHTML = `<p class="empty-state">Ajoute des aliments pour construire la recette.</p>`;
+    return;
+  }
+
+  const html = recipeDraftItems
+    .map((item) => {
+      const food = findFood(item.foodId);
+      const name = food ? food.name : "Aliment";
+      return `
+        <li class="entry-item">
+          <div>
+            <p class="entry-title">${name}</p>
+            <p class="entry-sub">${formatQuantity(item.quantity, item.unitType)}</p>
+          </div>
+          <div class="entry-actions">
+            <p class="entry-protein">${item.proteinComputed.toFixed(1)} g</p>
+            <button type="button" class="danger-link" data-draft-remove-id="${item.id}">Retirer</button>
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+
+  els.recipeDraftList.innerHTML = html;
+}
+
+function saveRecipeFromDraft() {
+  const name = String(els.recipeNameInput.value || "").trim();
+  const category = els.recipeCategorySelect.value;
+  if (!name || !RECIPE_CATEGORIES[category] || recipeDraftItems.length === 0) {
+    return;
+  }
+
+  const recipe = {
+    id: makeId(),
+    name,
+    category,
+    foods: recipeDraftItems.map((item) => ({
+      foodId: item.foodId,
+      quantity: item.quantity,
+      unitType: item.unitType,
+      proteinComputed: item.proteinComputed
+    }))
+  };
+
+  state.recipes = state.recipes || [];
+  state.recipes.push(recipe);
+  saveState();
+
+  recipeDraftItems = [];
+  els.recipeBuilderForm.reset();
+  els.recipeCategorySelect.value = "breakfast";
+  renderRecipeFoodSelect();
+  updateFoodUiForForm(els.recipeFoodSelect, els.recipeUnitLabel, els.recipeQuickQty);
+  renderRecipeDraft();
+  renderRecipes();
+}
+
+function renderRecipes() {
+  const recipes = state.recipes || [];
+  if (recipes.length === 0) {
+    els.recipesList.innerHTML = `<p class="empty-state">Aucune recette enregistree.</p>`;
+    return;
+  }
+
+  const sorted = [...recipes].sort((a, b) => {
+    const aLabel = `${RECIPE_CATEGORIES[a.category] || a.category} ${a.name}`;
+    const bLabel = `${RECIPE_CATEGORIES[b.category] || b.category} ${b.name}`;
+    return aLabel.localeCompare(bLabel);
+  });
+
+  const fragment = document.createDocumentFragment();
+
+  sorted.forEach((recipe) => {
+    const tpl = els.recipeSavedTpl.content.cloneNode(true);
+    const total = round(recipe.foods.reduce((sum, item) => sum + safeNumber(item.proteinComputed), 0), 1);
+    const title = tpl.querySelector(".recipe-title");
+    const sub = tpl.querySelector(".recipe-sub");
+    const useBtn = tpl.querySelector(".use-recipe-btn");
+    const deleteBtn = tpl.querySelector(".delete-recipe-btn");
+
+    title.textContent = `${RECIPE_CATEGORIES[recipe.category] || recipe.category} - ${recipe.name}`;
+    sub.textContent = `${recipe.foods.length} aliment(s) - ${total.toFixed(1)} g proteines`;
+    useBtn.dataset.recipeUseId = recipe.id;
+    deleteBtn.dataset.recipeDeleteId = recipe.id;
+
+    fragment.appendChild(tpl);
+  });
+
+  els.recipesList.innerHTML = "";
+  els.recipesList.appendChild(fragment);
+}
+
+function addRecipeToToday(recipeId) {
+  const recipe = (state.recipes || []).find((item) => item.id === recipeId);
+  if (!recipe) {
+    return;
+  }
+
+  const now = Date.now();
+  recipe.foods.forEach((item, index) => {
+    const food = findFood(item.foodId);
+    if (!food) {
+      return;
+    }
+    addEntryToDate(food, item.quantity, new Date(now + index * 1000));
+    state.lastFoodId = food.id;
+  });
+
+  saveState();
+  renderSummary();
+  renderTodayEntries();
+  renderHistory();
+}
+
+function removeRecipe(recipeId) {
+  state.recipes = (state.recipes || []).filter((recipe) => recipe.id !== recipeId);
+  saveState();
+  renderRecipes();
+}
+
+function addEntryToDate(food, quantity, dateObj) {
   const protein = computeProtein(food, quantity);
-  const now = new Date();
-  const key = toLocalDateKey(now);
+  const key = toLocalDateKey(dateObj);
 
   const entry = {
     id: makeId(),
-    timestamp: now.toISOString(),
-    timeLabel: now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+    timestamp: dateObj.toISOString(),
+    timeLabel: dateObj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
     foodId: food.id,
     quantity,
     unitType: food.unitType,
@@ -340,14 +573,6 @@ function addEntry() {
   }
 
   state.entriesByDate[key].push(entry);
-  state.lastFoodId = food.id;
-
-  saveState();
-  renderSummary();
-  renderTodayEntries();
-  renderHistory();
-
-  els.quantityInput.value = "";
 }
 
 function removeEntry(dateKey, entryId) {
@@ -400,6 +625,7 @@ function importData(event) {
       state = sanitizeState(incoming);
       saveState();
       renderFoodSelect();
+      renderRecipeFoodSelect();
       renderProfileForm();
       renderAll();
       alert("Import termine.");
@@ -426,18 +652,64 @@ function sanitizeState(raw) {
   };
 
   safe.foods = Array.isArray(raw.foods) && raw.foods.length ? raw.foods : DEFAULT_FOODS;
+  safe.recipes = sanitizeRecipes(raw.recipes, safe.foods);
   safe.entriesByDate = typeof raw.entriesByDate === "object" && raw.entriesByDate ? raw.entriesByDate : {};
   safe.lastFoodId = raw.lastFoodId || safe.foods[0].id;
 
   return safe;
 }
 
+function sanitizeRecipes(rawRecipes, foodCatalog) {
+  if (!Array.isArray(rawRecipes)) {
+    return [];
+  }
+
+  return rawRecipes
+    .map((recipe) => {
+      const category = RECIPE_CATEGORIES[recipe.category] ? recipe.category : "breakfast";
+      const recipeFoods = Array.isArray(recipe.foods)
+        ? recipe.foods
+            .map((item) => {
+              const food = foodCatalog.find((value) => value.id === item.foodId);
+              if (!food) {
+                return null;
+              }
+
+              const quantity = clampFloat(item.quantity, 0.1, 5000);
+              return {
+                foodId: food.id,
+                quantity,
+                unitType: food.unitType,
+                proteinComputed: computeProtein(food, quantity)
+              };
+            })
+            .filter(Boolean)
+        : [];
+
+      if (!recipeFoods.length) {
+        return null;
+      }
+
+      return {
+        id: recipe.id || makeId(),
+        name: String(recipe.name || "Repas sans nom").trim().slice(0, 80) || "Repas sans nom",
+        category,
+        foods: recipeFoods
+      };
+    })
+    .filter(Boolean);
+}
+
 function getSelectedFood() {
-  return state.foods.find((food) => food.id === els.foodSelect.value);
+  return getFoodById(els.foodSelect.value);
+}
+
+function getFoodById(foodId) {
+  return state.foods.find((food) => food.id === foodId);
 }
 
 function findFood(foodId) {
-  return state.foods.find((food) => food.id === foodId);
+  return getFoodById(foodId);
 }
 
 function computeProtein(food, quantity) {
