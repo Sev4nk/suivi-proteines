@@ -43,18 +43,21 @@ Option recommandee (pour service worker/PWA):
 - Donnees stockees uniquement localement dans ce navigateur.
 - Changer de navigateur/appareil ne transfere pas les donnees sans export/import.
 
-## GitHub (depot distant)
+## Deploiement GitHub Pages (acces HTTPS depuis le telephone)
 
-1. Cree un nouveau depot vide sur GitHub, par exemple `suivi-proteines`.
-2. Dans ce dossier, execute:
-   - `git remote add origin https://github.com/<ton-user>/suivi-proteines.git`
-   - `git push -u origin main`
+Le repo est configure avec GitHub Actions pour se deployer automatiquement sur GitHub Pages a chaque push sur `main`.
 
-## Publication Vercel
+### Activer GitHub Pages (une seule fois)
 
-1. Sur Vercel, clique `Add New...` puis `Project`.
-2. Importe le repo GitHub `suivi-proteines`.
-3. Framework preset: `Other`.
-4. Build command: laisser vide.
-5. Output directory: laisser vide.
-6. Deploy.
+1. Va dans **Settings > Pages** de ton repo GitHub.
+2. Sous **Source**, choisis **GitHub Actions**.
+3. Sauvegarde.
+
+Le prochain push sur `main` declenche le workflow et publie le site.  
+Ton app sera accessible a : `https://<ton-user>.github.io/suivi-proteines/`
+
+### Ajouter au telephone (PWA)
+
+- **Android (Chrome)** : ouvre l'URL, appuie sur les trois points > "Ajouter a l'ecran d'accueil".
+- **iOS (Safari)** : ouvre l'URL, appuie sur Partager > "Sur l'ecran d'accueil".
+
