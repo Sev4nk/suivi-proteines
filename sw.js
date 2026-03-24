@@ -1,9 +1,10 @@
-const CACHE_NAME = "protein-tracker-cache-v2";
+const CACHE_NAME = "protein-tracker-cache-v3";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./db.js",
   "./manifest.json"
 ];
 

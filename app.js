@@ -193,33 +193,41 @@ function bindEvents() {
     btn.addEventListener("click", () => activateTab(btn.dataset.tab));
   });
 
-  els.foodSelect.addEventListener("change", () => {
-    state.lastFoodId = els.foodSelect.value;
-    saveState();
-    updateUnitAndQuickQty();
-  });
+  if (els.foodSelect) {
+    els.foodSelect.addEventListener("change", () => {
+      state.lastFoodId = els.foodSelect.value;
+      saveState();
+      updateUnitAndQuickQty();
+    });
+  }
 
-  els.quickQty.addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-value]");
-    if (!button) {
-      return;
-    }
-    els.quantityInput.value = button.dataset.value;
-    els.quantityInput.focus();
-  });
+  if (els.quickQty && els.quantityInput) {
+    els.quickQty.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-value]");
+      if (!button) {
+        return;
+      }
+      els.quantityInput.value = button.dataset.value;
+      els.quantityInput.focus();
+    });
+  }
 
-  els.entryForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    addEntry();
-  });
+  if (els.entryForm) {
+    els.entryForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      addEntry();
+    });
+  }
 
-  els.todayEntries.addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-entry-id]");
-    if (!button) {
-      return;
-    }
-    removeEntry(todayKey(), button.dataset.entryId);
-  });
+  if (els.todayEntries) {
+    els.todayEntries.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-entry-id]");
+      if (!button) {
+        return;
+      }
+      removeEntry(todayKey(), button.dataset.entryId);
+    });
+  }
 
   els.profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -318,6 +326,10 @@ function renderAll() {
 }
 
 async function renderFoodSelect() {
+  if (!els.foodSelect) {
+    return;
+  }
+
   // Charger depuis Dexie (nouvelle DB)
   let products = await window.SuiviDB.db.produits.toArray();
   
@@ -347,6 +359,10 @@ async function renderFoodSelect() {
 }
 
 function updateUnitAndQuickQty() {
+  if (!els.foodSelect || !els.unitLabel || !els.quickQty) {
+    return;
+  }
+
   const food = getSelectedFood();
   if (!food) {
     return;
@@ -376,6 +392,10 @@ function renderSummary() {
 }
 
 function renderTodayEntries() {
+  if (!els.todayEntries || !els.entryItemTpl) {
+    return;
+  }
+
   const entries = state.entriesByDate[todayKey()] || [];
   if (entries.length === 0) {
     els.todayEntries.innerHTML = `<p class="empty-state">Aucune prise pour aujourd'hui.</p>`;
@@ -725,6 +745,10 @@ function sanitizeState(raw) {
 }
 
 function getSelectedFood() {
+  if (!els.foodSelect) {
+    return null;
+  }
+
   return state.foods.find((food) => food.id === els.foodSelect.value);
 }
 
@@ -741,15 +765,15 @@ function computeProtein(food, quantity) {
 }
 
 function getCurrentTarget() {
-  const mode = els.targetModeSelect.value || state.profile.proteinTargetMode;
+  const mode = (els.targetModeSelect?.value || state.profile.proteinTargetMode || "auto");
   if (mode === "auto") {
-    const weight = clampFloat(els.weightInput.value || state.profile.weightKg, 30, 250);
-    const goal = els.goalTypeSelect.value || state.profile.goalType;
+    const weight = clampFloat((els.weightInput?.value || state.profile.weightKg), 30, 250);
+    const goal = (els.goalTypeSelect?.value || state.profile.goalType);
     const multiplier = GOAL_MULTIPLIERS[goal] || GOAL_MULTIPLIERS.maintain;
     return round(weight * multiplier, 0);
   }
 
-  return clampInt(els.manualTargetInput.value || state.profile.proteinTargetValue, 40, 400);
+  return clampInt((els.manualTargetInput?.value || state.profile.proteinTargetValue || 140), 40, 400);
 }
 
 function loadState() {
