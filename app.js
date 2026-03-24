@@ -135,6 +135,14 @@ const els = {
   journalTotalProtein: document.getElementById("journalTotalProtein"),
   journalTotalCarbs: document.getElementById("journalTotalCarbs"),
   journalTotalFat: document.getElementById("journalTotalFat"),
+  journalProgressKcalText: document.getElementById("journalProgressKcalText"),
+  journalProgressProteinText: document.getElementById("journalProgressProteinText"),
+  journalProgressCarbsText: document.getElementById("journalProgressCarbsText"),
+  journalProgressFatText: document.getElementById("journalProgressFatText"),
+  journalProgressKcalFill: document.getElementById("journalProgressKcalFill"),
+  journalProgressProteinFill: document.getElementById("journalProgressProteinFill"),
+  journalProgressCarbsFill: document.getElementById("journalProgressCarbsFill"),
+  journalProgressFatFill: document.getElementById("journalProgressFatFill"),
   mealItemModal: document.getElementById("mealItemModal"),
   mealItemForm: document.getElementById("mealItemForm"),
   mealItemModalTitle: document.getElementById("mealItemModalTitle"),
@@ -420,6 +428,50 @@ function getProteinTargetFromProfile() {
   return round(weight * multiplier, 0);
 }
 
+function getMacroTargetsFromProfile() {
+  const tdee = safeNumber(state?.profile?.tdeeDaily || state?.profile?.calorieTarget);
+  const proteinPct = safeNumber(state?.profile?.macroPercentProtein);
+  const carbsPct = safeNumber(state?.profile?.macroPercentCarbs);
+  const fatsPct = safeNumber(state?.profile?.macroPercentFats);
+
+  const caloriesTarget = tdee > 0 ? tdee : 2000;
+  const proteinTarget = proteinPct > 0 ? (caloriesTarget * (proteinPct / 100)) / 4 : getProteinTargetFromProfile();
+  const carbsTarget = carbsPct > 0 ? (caloriesTarget * (carbsPct / 100)) / 4 : 0;
+  const fatTarget = fatsPct > 0 ? (caloriesTarget * (fatsPct / 100)) / 9 : 0;
+
+  return {
+    calories: round(caloriesTarget, 0),
+    protein: round(proteinTarget, 0),
+    carbs: round(carbsTarget, 0),
+    fat: round(fatTarget, 0)
+  };
+}
+
+function renderProgressLine(textEl, fillEl, consumed, target, unit) {
+  if (!textEl || !fillEl) {
+    return;
+  }
+
+  const safeConsumed = Math.max(0, consumed);
+  const safeTarget = Math.max(0, target);
+  const pct = safeTarget > 0 ? Math.min((safeConsumed / safeTarget) * 100, 100) : 0;
+
+  textEl.textContent = `${safeConsumed.toFixed(0)}/${safeTarget.toFixed(0)} ${unit}`;
+  fillEl.style.width = `${pct.toFixed(0)}%`;
+  fillEl.setAttribute("aria-valuenow", String(Math.round(pct)));
+}
+
+async function renderJournalMacroProgress() {
+  const dateStr = getDateString(currentDate);
+  const totals = await getMealTotalsForDate(dateStr);
+  const targets = getMacroTargetsFromProfile();
+
+  renderProgressLine(els.journalProgressKcalText, els.journalProgressKcalFill, totals.calories, targets.calories, "kcal");
+  renderProgressLine(els.journalProgressProteinText, els.journalProgressProteinFill, totals.protein, targets.protein, "g");
+  renderProgressLine(els.journalProgressCarbsText, els.journalProgressCarbsFill, totals.carbs, targets.carbs, "g");
+  renderProgressLine(els.journalProgressFatText, els.journalProgressFatFill, totals.fat, targets.fat, "g");
+}
+
 async function getMealTotalsForDate(dateStr) {
   let totalCal = 0;
   let totalProt = 0;
@@ -662,6 +714,7 @@ function saveProfileFromForm() {
   saveState();
   updateProfileCalculations();
   renderSummary();
+  renderJournalMacroProgress();
   alert('✓ Profil enregistré avec succès !');
 }
 
@@ -1610,6 +1663,7 @@ async function updateDailyTotals() {
   els.journalTotalProtein.textContent = totals.protein.toFixed(1);
   els.journalTotalCarbs.textContent = totals.carbs.toFixed(1);
   els.journalTotalFat.textContent = totals.fat.toFixed(1);
+  await renderJournalMacroProgress();
 }
 
 async function openMealItemModal() {

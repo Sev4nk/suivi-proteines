@@ -51,6 +51,39 @@
     </nav>
 
     <section id="tab-journal" class="tab-panel active">
+      <article class="panel journal-macro-sticky" aria-live="polite">
+        <div class="journal-macro-grid">
+          <div class="journal-macro-item">
+            <p class="journal-macro-label">🔥 Kcal</p>
+            <p id="journalProgressKcalText" class="journal-macro-value">0/0 kcal</p>
+            <div class="journal-macro-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+              <div id="journalProgressKcalFill" class="journal-macro-fill"></div>
+            </div>
+          </div>
+          <div class="journal-macro-item">
+            <p class="journal-macro-label">🥩 Protéines</p>
+            <p id="journalProgressProteinText" class="journal-macro-value">0/0 g</p>
+            <div class="journal-macro-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+              <div id="journalProgressProteinFill" class="journal-macro-fill"></div>
+            </div>
+          </div>
+          <div class="journal-macro-item">
+            <p class="journal-macro-label">🍞 Glucides</p>
+            <p id="journalProgressCarbsText" class="journal-macro-value">0/0 g</p>
+            <div class="journal-macro-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+              <div id="journalProgressCarbsFill" class="journal-macro-fill"></div>
+            </div>
+          </div>
+          <div class="journal-macro-item">
+            <p class="journal-macro-label">🥑 Lipides</p>
+            <p id="journalProgressFatText" class="journal-macro-value">0/0 g</p>
+            <div class="journal-macro-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+              <div id="journalProgressFatFill" class="journal-macro-fill"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
       <!-- Date Navigation -->
       <article class="panel journal-date-nav">
         <div class="date-controls">

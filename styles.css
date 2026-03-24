@@ -1248,7 +1248,7 @@ fieldset legend {
   --ok: #ffffff;
   --warn: #d9d9d9;
   --danger: #ffffff;
-  --line: rgba(255, 255, 255, 0.22);
+  --line: rgba(255, 255, 255, 0.38);
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
@@ -1296,6 +1296,7 @@ legend {
 .meal-item,
 .journal-summary,
 .journal-date-nav,
+.journal-macro-sticky,
 .product-card,
 .recipe-card,
 .entry-item,
@@ -1307,15 +1308,65 @@ legend {
 .modal-content fieldset,
 fieldset {
   background: #111111;
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.36);
   color: #ffffff;
   box-shadow: var(--shadow);
 }
 
 .tab-nav {
   background: #0b0b0b;
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.42);
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.journal-macro-sticky {
+  position: sticky;
+  top: 82px;
+  z-index: 2;
+  margin-bottom: 12px;
+  background: rgba(12, 12, 12, 0.96);
+  backdrop-filter: blur(6px);
+}
+
+.journal-macro-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.journal-macro-item {
+  background: #171717;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.journal-macro-label {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #e6e6e6;
+}
+
+.journal-macro-value {
+  margin: 3px 0 7px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.journal-macro-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #2a2a2a;
+  overflow: hidden;
+}
+
+.journal-macro-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffffff 0%, #c8c8c8 100%);
+  transition: width 280ms ease;
 }
 
 .tab-btn {
@@ -1410,7 +1461,7 @@ option {
 
 .meal-item {
   background: #161616;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.36);
 }
 
 .meal-item-info strong {
@@ -1426,7 +1477,7 @@ option {
 .totals-badge {
   background: #1e1e1e;
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.36);
 }
 
 .danger-link,
@@ -1486,6 +1537,14 @@ dialog.fallback-open {
 
   .app-shell {
     padding: 14px 10px 90px;
+  }
+
+  .journal-macro-sticky {
+    top: 118px;
+  }
+
+  .journal-macro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .modal {
