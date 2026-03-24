@@ -1005,11 +1005,46 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function registerServiceWorker() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {
-      // Keep silent to avoid friction in a tiny personal app.
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register("sw.js");
+
+    // If an updated worker is already waiting, activate it now.
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+
+    registration.addEventListener("updatefound", () => {
+      const newWorker = registration.installing;
+      if (!newWorker) {
+        return;
+      }
+
+      newWorker.addEventListener("statechange", () => {
+        if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+          newWorker.postMessage({ type: "SKIP_WAITING" });
+        }
+      });
     });
+
+    // Reload once when the new worker takes control.
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (window.__swReloadedOnce) {
+        return;
+      }
+      window.__swReloadedOnce = true;
+      window.location.reload();
+    });
+
+    // Trigger update checks proactively (helpful on mobile PWAs).
+    registration.update();
+    setTimeout(() => registration.update(), 3000);
+  } catch (error) {
+    // Keep silent to avoid friction in a tiny personal app.
   }
 }
 
