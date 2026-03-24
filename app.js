@@ -1579,13 +1579,21 @@ async function populateMealItemSelects() {
   const products = await window.SuiviDB.db.produits.toArray();
   const recipes = await window.SuiviDB.db.recettes.toArray();
 
-  els.mealItemProduct.innerHTML = products
-    .map(p => `<option value="${p.id}">${p.name}</option>`)
-    .join('');
+  els.mealItemProduct.innerHTML = products.length
+    ? products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')
+    : '<option value="">Aucun produit</option>';
 
-  els.mealItemRecipe.innerHTML = recipes
-    .map(r => `<option value="${r.id}">${r.name}</option>`)
-    .join('');
+  els.mealItemRecipe.innerHTML = recipes.length
+    ? recipes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')
+    : '<option value="">Aucune recette</option>';
+
+  // Assurer une valeur initiale explicite pour la validation HTML5
+  if (products.length > 0) {
+    els.mealItemProduct.value = String(products[0].id);
+  }
+  if (recipes.length > 0) {
+    els.mealItemRecipe.value = String(recipes[0].id);
+  }
 
   if (products.length > 0) {
     updateMealItemUnitDisplay();
@@ -1610,6 +1618,20 @@ function switchSelectionType(type) {
   Object.keys(els.selectionPanels).forEach(panelType => {
     els.selectionPanels[panelType].classList.toggle('active', panelType === type);
   });
+
+  const isProduct = type === 'product';
+
+  // Éviter que les champs cachés bloquent le submit du formulaire
+  els.mealItemProduct.disabled = !isProduct;
+  els.mealItemQuantity.disabled = !isProduct;
+  els.mealItemUnit.disabled = !isProduct;
+  els.mealItemProduct.required = isProduct;
+  els.mealItemQuantity.required = isProduct;
+
+  els.mealItemRecipe.disabled = isProduct;
+  els.mealItemRecipePortions.disabled = isProduct;
+  els.mealItemRecipe.required = !isProduct;
+  els.mealItemRecipePortions.required = !isProduct;
 }
 
 async function saveMealItem() {
@@ -1641,6 +1663,11 @@ async function saveMealItem() {
       const productId = parseInt(els.mealItemProduct.value);
       const quantity = parseFloat(els.mealItemQuantity.value);
 
+      if (!Number.isFinite(productId) || !Number.isFinite(quantity) || quantity <= 0) {
+        alert('Veuillez sélectionner un produit et une quantité valide.');
+        return;
+      }
+
       const product = await window.SuiviDB.db.produits.get(productId);
       if (!product) {
         alert('Produit non trouvé');
@@ -1668,6 +1695,11 @@ async function saveMealItem() {
     } else if (selectionType === 'recipe') {
       const recipeId = parseInt(els.mealItemRecipe.value);
       const portions = parseFloat(els.mealItemRecipePortions.value);
+
+      if (!Number.isFinite(recipeId) || !Number.isFinite(portions) || portions <= 0) {
+        alert('Veuillez sélectionner une recette et un nombre de portions valide.');
+        return;
+      }
 
       const recipe = await window.SuiviDB.db.recettes.get(recipeId);
       if (!recipe) {
