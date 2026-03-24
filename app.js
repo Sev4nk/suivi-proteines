@@ -186,6 +186,9 @@ async function init() {
 document.addEventListener('DOMContentLoaded', init);
 
 function bindEvents() {
+  // Re-fetch tab buttons after DOM is ready
+  els.tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+  
   els.tabButtons.forEach((btn) => {
     btn.addEventListener("click", () => activateTab(btn.dataset.tab));
   });
