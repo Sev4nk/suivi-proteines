@@ -1293,6 +1293,7 @@ legend {
 .panel,
 .panel-total,
 .meal-section,
+.meal-item,
 .journal-summary,
 .journal-date-nav,
 .product-card,
@@ -1405,6 +1406,21 @@ option {
 .empty-state-meal,
 .detail-row {
   color: #cccccc;
+}
+
+.meal-item {
+  background: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.meal-item-info strong {
+  color: #ffffff;
+}
+
+.meal-item-nutrition {
+  color: #e8e8e8;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .totals-badge {

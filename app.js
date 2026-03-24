@@ -406,19 +406,60 @@ function updateUnitAndQuickQty() {
     .join("");
 }
 
-function renderSummary() {
-  const key = todayKey();
-  const entries = state.entriesByDate[key] || [];
-  const total = round(entries.reduce((sum, entry) => sum + entry.proteinComputed, 0), 1);
-  const target = getCurrentTarget();
-  const ratio = target > 0 ? Math.min((total / target) * 100, 100) : 0;
+function getProteinTargetFromProfile() {
+  const tdee = safeNumber(state?.profile?.tdeeDaily);
+  const proteinPct = safeNumber(state?.profile?.macroPercentProtein);
+
+  if (tdee > 0 && proteinPct > 0) {
+    return round((tdee * (proteinPct / 100)) / 4, 0);
+  }
+
+  const weight = clampFloat(state?.profile?.weightKg || 70, 30, 250);
+  const goal = state?.profile?.goalType || "maintain";
+  const multiplier = GOAL_MULTIPLIERS[goal] || GOAL_MULTIPLIERS.maintain;
+  return round(weight * multiplier, 0);
+}
+
+async function getMealTotalsForDate(dateStr) {
+  let totalCal = 0;
+  let totalProt = 0;
+  let totalCarb = 0;
+  let totalFat = 0;
+
+  const repas = await window.SuiviDB.db.repas.where("date").equals(dateStr).toArray();
+  for (const meal of repas) {
+    const items = await window.SuiviDB.db.repasElements.where("repasId").equals(meal.id).toArray();
+    for (const item of items) {
+      totalCal += item.calories;
+      totalProt += item.protein;
+      totalCarb += item.carbs;
+      totalFat += item.fat;
+    }
+  }
+
+  return {
+    calories: totalCal,
+    protein: totalProt,
+    carbs: totalCarb,
+    fat: totalFat
+  };
+}
+
+async function renderSummary() {
+  const dateStr = getDateString(currentDate);
+  const totals = await getMealTotalsForDate(dateStr);
+  const target = getProteinTargetFromProfile();
+  const ratio = target > 0 ? Math.min((totals.protein / target) * 100, 100) : 0;
   const pct = round(ratio, 0);
 
-  els.dailyTotal.textContent = total.toFixed(1);
+  els.dailyTotal.textContent = round(totals.protein, 1).toFixed(1);
   els.dailyTarget.textContent = target.toFixed(0);
   els.progressPct.textContent = pct.toFixed(0);
   els.progressFill.style.width = `${pct}%`;
   els.progressBarWrap.setAttribute("aria-valuenow", String(pct));
+
+  const { formatted } = formatDateDisplay(currentDate);
+  els.todayLabel.textContent = formatted;
 }
 
 function renderTodayEntries() {
@@ -620,6 +661,7 @@ function saveProfileFromForm() {
   state.profile = next;
   saveState();
   updateProfileCalculations();
+  renderSummary();
   alert('✓ Profil enregistré avec succès !');
 }
 
@@ -1038,13 +1080,13 @@ async function renderProductsList() {
             <strong>${p.portionSize} ${UNIT_LABELS[p.unitType] || p.unitType}</strong>
           </div>
           <div class="detail-row">
-            <span>Calories :</span>
+            <span>🔥 Calories :</span>
             <strong>${p.calories.toFixed(0)} kcal</strong>
           </div>
           <div class="nutritional-summary">
-            <span>P: ${p.protein.toFixed(1)}g</span>
-            <span>C: ${p.carbs.toFixed(1)}g</span>
-            <span>L: ${p.fat.toFixed(1)}g</span>
+            <span>🥩 ${p.protein.toFixed(1)}g</span>
+            <span>🍞 ${p.carbs.toFixed(1)}g</span>
+            <span>🥑 ${p.fat.toFixed(1)}g</span>
           </div>
         </div>
         <div class="product-actions">
@@ -1381,19 +1423,19 @@ async function renderRecipesList() {
         <div class="recipe-nutrition">
           <div>
             <strong>${Math.round(r.totalCalories)}</strong>
-            <span>kcal</span>
+            <span>🔥 kcal</span>
           </div>
           <div>
-            <strong>${r.totalProtein.toFixed(1)}g</strong>
-            <span>P</span>
+            <strong>🥩 ${r.totalProtein.toFixed(1)}g</strong>
+            <span>Protéines</span>
           </div>
           <div>
-            <strong>${r.totalCarbs.toFixed(1)}g</strong>
-            <span>C</span>
+            <strong>🍞 ${r.totalCarbs.toFixed(1)}g</strong>
+            <span>Glucides</span>
           </div>
           <div>
-            <strong>${r.totalFat.toFixed(1)}g</strong>
-            <span>L</span>
+            <strong>🥑 ${r.totalFat.toFixed(1)}g</strong>
+            <span>Lipides</span>
           </div>
         </div>
         <div class="recipe-actions">
@@ -1530,8 +1572,10 @@ async function renderMealsForDate() {
               <span class="meal-item-detail">${itemInfo}</span>
             </div>
             <div class="meal-item-nutrition">
-              <span>${Math.round(item.calories)} kcal</span>
-              <span>${item.protein.toFixed(1)}g P</span>
+              <span>🔥 ${Math.round(item.calories)} kcal</span>
+              <span>🥩 ${item.protein.toFixed(1)}g</span>
+              <span>🍞 ${item.carbs.toFixed(1)}g</span>
+              <span>🥑 ${item.fat.toFixed(1)}g</span>
             </div>
             <button class="btn-remove-meal" data-item-id="${item.id}" onclick="removeMealItem(${item.id})" title="Supprimer">✕</button>
           </li>
@@ -1545,46 +1589,27 @@ async function renderMealsForDate() {
     const totalsContainer = document.getElementById(`meal-${mealType}-totals`);
     if (totalsContainer) {
       totalsContainer.innerHTML = `
-        <span class="totals-badge">${Math.round(mealTotalCal)} kcal</span>
-        <span class="totals-badge">P: ${mealTotalProt.toFixed(1)}g</span>
-        <span class="totals-badge">C: ${mealTotalCarb.toFixed(1)}g</span>
-        <span class="totals-badge">L: ${mealTotalFat.toFixed(1)}g</span>
+        <span class="totals-badge">🔥 ${Math.round(mealTotalCal)} kcal</span>
+        <span class="totals-badge">🥩 ${mealTotalProt.toFixed(1)}g</span>
+        <span class="totals-badge">🍞 ${mealTotalCarb.toFixed(1)}g</span>
+        <span class="totals-badge">🥑 ${mealTotalFat.toFixed(1)}g</span>
       `;
     }
   }
 
   // Calculer les totaux du jour
   await updateDailyTotals();
+  await renderSummary();
 }
 
 async function updateDailyTotals() {
   const dateStr = getDateString(currentDate);
-  
-  let totalCal = 0, totalProt = 0, totalCarb = 0, totalFat = 0;
 
-  const repas = await window.SuiviDB.db.repas
-    .where('date')
-    .equals(dateStr)
-    .toArray();
-
-  for (const meal of repas) {
-    const items = await window.SuiviDB.db.repasElements
-      .where('repasId')
-      .equals(meal.id)
-      .toArray();
-    
-    for (const item of items) {
-      totalCal += item.calories;
-      totalProt += item.protein;
-      totalCarb += item.carbs;
-      totalFat += item.fat;
-    }
-  }
-
-  els.journalTotalCalories.textContent = Math.round(totalCal);
-  els.journalTotalProtein.textContent = totalProt.toFixed(1);
-  els.journalTotalCarbs.textContent = totalCarb.toFixed(1);
-  els.journalTotalFat.textContent = totalFat.toFixed(1);
+  const totals = await getMealTotalsForDate(dateStr);
+  els.journalTotalCalories.textContent = Math.round(totals.calories);
+  els.journalTotalProtein.textContent = totals.protein.toFixed(1);
+  els.journalTotalCarbs.textContent = totals.carbs.toFixed(1);
+  els.journalTotalFat.textContent = totals.fat.toFixed(1);
 }
 
 async function openMealItemModal() {
