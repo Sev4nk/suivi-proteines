@@ -275,6 +275,10 @@ button:focus-visible {
   border: 1px solid rgba(11, 82, 88, 0.2);
 }
 
+.align-end {
+  align-self: end;
+}
+
 .panel-head {
   display: flex;
   justify-content: space-between;
@@ -339,6 +343,41 @@ button:focus-visible {
   margin: 0;
   color: var(--text-soft);
   font-size: 0.9rem;
+}
+
+.recipe-food-fieldset {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.recipe-food-fieldset legend {
+  font-weight: 800;
+  padding: 0 6px;
+}
+
+.subheading {
+  margin-top: 14px;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.recipe-card {
+  align-items: center;
+}
+
+.recipe-title {
+  margin-bottom: 4px;
+}
+
+.recipe-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
 }
 
 .empty-state {

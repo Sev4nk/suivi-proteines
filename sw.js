@@ -1,4 +1,4 @@
-const CACHE_NAME = "protein-tracker-cache-v1";
+const CACHE_NAME = "protein-tracker-cache-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -26,12 +26,40 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy));
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match("./index.html");
+          return cached || Response.error();
+        })
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.match(event.request).then(async (cached) => {
       if (cached) {
         return cached;
       }
-      return fetch(event.request).catch(() => caches.match("./index.html"));
+
+      try {
+        const response = await fetch(event.request);
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      } catch (error) {
+        return caches.match("./index.html");
+      }
     })
   );
 });
