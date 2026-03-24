@@ -1249,6 +1249,10 @@ fieldset legend {
   --warn: #d9d9d9;
   --danger: #ffffff;
   --line: rgba(255, 255, 255, 0.72);
+  --accent-surface: #12273a;
+  --accent-surface-strong: #1a3956;
+  --accent-border: #8fc8ff;
+  --accent-text: #e9f5ff;
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
@@ -1314,22 +1318,14 @@ fieldset {
 }
 
 .tab-nav {
-  background: #0b0b0b;
-  border-color: rgba(255, 255, 255, 0.85);
-  display: flex;
-  flex-wrap: nowrap;
+  background: linear-gradient(180deg, var(--accent-surface-strong) 0%, var(--accent-surface) 100%);
+  border-color: var(--accent-border);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.tab-nav::-webkit-scrollbar {
-  height: 4px;
-}
-
-.tab-nav::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
+  position: sticky;
+  top: 8px;
+  z-index: 5;
 }
 
 .journal-macro-sticky {
@@ -1337,32 +1333,22 @@ fieldset {
   top: 74px;
   z-index: 4;
   margin-bottom: 12px;
-  background: rgba(9, 9, 9, 0.98);
+  background: linear-gradient(180deg, rgba(16, 37, 56, 0.97) 0%, rgba(14, 30, 44, 0.97) 100%);
+  border-color: var(--accent-border);
   backdrop-filter: blur(6px);
 }
 
 .journal-macro-grid {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.journal-macro-grid::-webkit-scrollbar {
-  height: 4px;
-}
-
-.journal-macro-grid::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
 }
 
 .journal-macro-item {
-  background: #171717;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(24, 52, 78, 0.95);
+  border: 1px solid var(--accent-border);
   border-radius: 12px;
-  min-width: 210px;
+  min-width: 0;
   padding: 8px 10px;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1374,7 +1360,7 @@ fieldset {
 .journal-macro-label {
   margin: 0;
   font-size: 0.76rem;
-  color: #e6e6e6;
+  color: var(--accent-text);
 }
 
 .journal-macro-value {
@@ -1389,7 +1375,7 @@ fieldset {
   grid-column: 1 / -1;
   height: 8px;
   border-radius: 999px;
-  background: #2a2a2a;
+  background: rgba(8, 14, 20, 0.9);
   overflow: hidden;
 }
 
@@ -1397,19 +1383,21 @@ fieldset {
   height: 100%;
   width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, #ffffff 0%, #c8c8c8 100%);
+  background: linear-gradient(90deg, #dff2ff 0%, #8fc8ff 100%);
   transition: width 280ms ease;
 }
 
 .tab-btn {
-  flex: 0 0 auto;
-  min-width: 120px;
-  color: #d6d6d6;
+  min-width: 0;
+  color: #d6ebff;
+  background: rgba(9, 20, 30, 0.75);
+  border: 1px solid rgba(143, 200, 255, 0.45);
 }
 
 .tab-btn.active {
-  background: #ffffff;
-  color: #000000;
+  background: #cbe9ff;
+  color: #08121a;
+  border-color: #e6f4ff;
 }
 
 .progress-track {
@@ -1562,11 +1550,13 @@ dialog.fallback-open {
 @media (max-width: 620px) {
   .tab-nav {
     border-radius: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .tab-btn {
-    min-width: 105px;
     min-height: 44px;
+    font-size: 0.9rem;
+    padding: 8px 6px;
   }
 
   .app-shell {
@@ -1574,7 +1564,11 @@ dialog.fallback-open {
   }
 
   .journal-macro-sticky {
-    top: 74px;
+    top: 124px;
+  }
+
+  .journal-macro-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .modal {
