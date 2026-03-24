@@ -1,4 +1,4 @@
-const CACHE_NAME = "protein-tracker-cache-v3";
+const CACHE_NAME = "protein-tracker-cache-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -31,6 +31,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const url = new URL(event.request.url);
+  const isCoreAsset = ["/index.html", "/styles.css", "/app.js", "/db.js"].some((path) =>
+    url.pathname.endsWith(path)
+  );
+
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
@@ -41,6 +46,23 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(async () => {
           const cached = await caches.match("./index.html");
+          return cached || Response.error();
+        })
+    );
+    return;
+  }
+
+  // Network-first for core assets to avoid stale JS/CSS on mobile devices.
+  if (isCoreAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
           return cached || Response.error();
         })
     );

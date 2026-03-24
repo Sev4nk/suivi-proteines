@@ -1234,3 +1234,257 @@ fieldset legend {
     padding: 1rem;
   }
 }
+
+/* ============ DARK MONOCHROME REDESIGN ============ */
+
+:root {
+  --bg-ink: #000000;
+  --bg-sea: #ffffff;
+  --bg-sand: #0a0a0a;
+  --panel: #0f0f0f;
+  --panel-strong: #141414;
+  --text-main: #ffffff;
+  --text-soft: #cfcfcf;
+  --ok: #ffffff;
+  --warn: #d9d9d9;
+  --danger: #ffffff;
+  --line: rgba(255, 255, 255, 0.22);
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+html,
+body {
+  background: #000000;
+  color: #ffffff;
+}
+
+body {
+  font-family: "Poppins", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.app-bg {
+  opacity: 0.2;
+}
+
+.blob-a,
+.blob-b {
+  filter: blur(12px) grayscale(1);
+  opacity: 0.2;
+}
+
+.grid-noise {
+  opacity: 0.08;
+}
+
+.app-header,
+.app-header h1,
+.eyebrow,
+.today-label,
+h2,
+h3,
+p,
+span,
+strong,
+label,
+legend {
+  color: #ffffff;
+}
+
+.panel,
+.panel-total,
+.meal-section,
+.journal-summary,
+.journal-date-nav,
+.product-card,
+.recipe-card,
+.entry-item,
+.history-card,
+.summary-item,
+.calc-item,
+.macro-item,
+.modal,
+.modal-content fieldset,
+fieldset {
+  background: #111111;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.tab-nav {
+  background: #0b0b0b;
+  border-color: rgba(255, 255, 255, 0.22);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.tab-btn {
+  color: #d6d6d6;
+}
+
+.tab-btn.active {
+  background: #ffffff;
+  color: #000000;
+}
+
+.progress-track {
+  background: #242424;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #ffffff 0%, #bdbdbd 100%);
+}
+
+input,
+select,
+textarea {
+  background: #050505;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9a9a9a;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 2px solid #ffffff;
+}
+
+option {
+  background: #121212;
+  color: #ffffff;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-nav,
+.btn-add-meal,
+.selection-tab,
+.quick-chip,
+.file-btn,
+.btn-sm {
+  background: #1a1a1a;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-nav:hover:not(:disabled),
+.btn-add-meal:hover,
+.selection-tab:hover,
+.quick-chip:hover,
+.btn-sm:hover {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.selection-tab.active {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.meal-item,
+.history-sub,
+.entry-sub,
+.meal-item-detail,
+.summary-label,
+.summary-unit,
+.calc-label,
+.calc-unit,
+.macro-label,
+.macro-unit,
+.metric-label,
+.empty-state,
+.empty-state-meal,
+.detail-row {
+  color: #cccccc;
+}
+
+.totals-badge {
+  background: #1e1e1e;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.danger-link,
+.btn-remove-meal,
+.btn-sm.btn-danger {
+  color: #ffffff;
+  background: #202020;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.btn-remove-meal:hover,
+.btn-sm.btn-danger:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Better mobile modal behavior for add-meal flow */
+.modal {
+  width: min(94vw, 680px);
+  max-height: 88vh;
+  overflow: auto;
+  background: #111111;
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(4px);
+}
+
+.modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: #111111;
+  padding-top: 0.75rem;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+dialog.fallback-open {
+  position: fixed;
+  inset: 5vh auto auto 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+@media (max-width: 620px) {
+  .tab-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 14px;
+  }
+
+  .tab-btn {
+    min-height: 44px;
+  }
+
+  .app-shell {
+    padding: 14px 10px 90px;
+  }
+
+  .modal {
+    width: 96vw;
+    padding: 1rem;
+    max-height: 90vh;
+  }
+
+  .meal-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .meal-item-nutrition {
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+}

@@ -155,6 +155,36 @@ const els = {
 let currentDate = new Date();
 let currentMealType = null;
 
+function openDialog(dialogEl) {
+  if (!dialogEl) {
+    return;
+  }
+
+  if (typeof dialogEl.showModal === "function") {
+    dialogEl.showModal();
+    return;
+  }
+
+  dialogEl.setAttribute("open", "");
+  dialogEl.classList.add("fallback-open");
+  document.body.classList.add("modal-open");
+}
+
+function closeDialog(dialogEl) {
+  if (!dialogEl) {
+    return;
+  }
+
+  if (typeof dialogEl.close === "function") {
+    dialogEl.close();
+    return;
+  }
+
+  dialogEl.removeAttribute("open");
+  dialogEl.classList.remove("fallback-open");
+  document.body.classList.remove("modal-open");
+}
+
 // ============ INITIALIZATION ASYNC ============
 
 async function init() {
@@ -251,7 +281,7 @@ function bindEvents() {
   // Événements produits
   els.addProductBtn.addEventListener("click", () => openProductModal());
   els.importApiBtn.addEventListener("click", () => importFromOpenFoodFacts());
-  els.productModalClose.addEventListener("click", () => els.productModal.close());
+  els.productModalClose.addEventListener("click", () => closeDialog(els.productModal));
   els.productForm.addEventListener("submit", (event) => {
     event.preventDefault();
     saveProduct(event);
@@ -262,7 +292,7 @@ function bindEvents() {
 
   // Événements recettes
   els.addRecipeBtn.addEventListener("click", () => openRecipeModal());
-  els.recipeModalClose.addEventListener("click", () => els.recipeModal.close());
+  els.recipeModalClose.addEventListener("click", () => closeDialog(els.recipeModal));
   els.addIngredientBtn.addEventListener("click", () => addRecipeIngredient());
   els.recipeForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -286,7 +316,7 @@ function bindEvents() {
   });
 
   // Modal repas
-  els.mealItemModalClose.addEventListener("click", () => els.mealItemModal.close());
+  els.mealItemModalClose.addEventListener("click", () => closeDialog(els.mealItemModal));
   els.mealItemForm.addEventListener("submit", (event) => {
     event.preventDefault();
     saveMealItem();
@@ -917,7 +947,7 @@ async function openProductModal(productId = null) {
   }
 
   updateProductUnitLabel();
-  els.productModal.showModal();
+  openDialog(els.productModal);
 }
 
 function updateProductUnitLabel() {
@@ -955,7 +985,7 @@ async function saveProduct(e) {
       console.log("✓ Produit créé :", newId);
     }
 
-    els.productModal.close();
+    closeDialog(els.productModal);
     await renderProductsList();
   } catch (error) {
     console.error('✗ Erreur sauvegarde produit:', error);
@@ -1115,7 +1145,7 @@ async function openRecipeModal(recipeId = null) {
 
   await renderRecipeIngredients();
   calculateRecipeTotals();
-  els.recipeModal.showModal();
+  openDialog(els.recipeModal);
 }
 
 async function renderRecipeIngredients() {
@@ -1303,7 +1333,7 @@ async function saveRecipe(e) {
     }
 
     console.log("✓ Recette enregistrée :", name);
-    els.recipeModal.close();
+    closeDialog(els.recipeModal);
     await renderRecipesList();
   } catch (error) {
     console.error('✗ Erreur sauvegarde recette:', error);
@@ -1572,7 +1602,7 @@ async function openMealItemModal() {
 
   await populateMealItemSelects();
   switchSelectionType('product');
-  els.mealItemModal.showModal();
+  openDialog(els.mealItemModal);
 }
 
 async function populateMealItemSelects() {
@@ -1727,7 +1757,7 @@ async function saveMealItem() {
       console.log("✓ Recette ajoutée au repas");
     }
 
-    els.mealItemModal.close();
+    closeDialog(els.mealItemModal);
     await renderMealsForDate();
   } catch (error) {
     console.error('✗ Erreur ajout au repas:', error);
