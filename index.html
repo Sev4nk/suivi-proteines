@@ -7,6 +7,8 @@
   <title>Suivi Proteines</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
+  <!-- Dexie - Gestion IndexedDB -->
+  <script src="https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js"></script>
 </head>
 <body>
   <div class="app-bg" aria-hidden="true">
@@ -42,40 +44,345 @@
 
     <nav class="tab-nav" aria-label="Navigation principale">
       <button class="tab-btn active" data-tab="journal">Journal</button>
+      <button class="tab-btn" data-tab="recipes">Recettes</button>
+      <button class="tab-btn" data-tab="products">Produits</button>
       <button class="tab-btn" data-tab="history">Historique</button>
       <button class="tab-btn" data-tab="profile">Profil</button>
     </nav>
 
     <section id="tab-journal" class="tab-panel active">
-      <article class="panel">
-        <h2>Ajout rapide</h2>
-        <form id="entryForm" class="stack">
-          <label>
-            Aliment
-            <select id="foodSelect" required></select>
-          </label>
-
-          <div class="quantity-row">
-            <label>
-              Quantite
-              <input id="quantityInput" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex: 150" required>
-            </label>
-            <label>
-              Unite
-              <input id="unitLabel" type="text" readonly>
-            </label>
+      <!-- Date Navigation -->
+      <article class="panel journal-date-nav">
+        <div class="date-controls">
+          <button id="prevDayBtn" class="btn-nav" aria-label="Jour précédent">← Hier</button>
+          <div class="date-display">
+            <p id="journalDate" class="journal-date-label">Aujourd'hui</p>
+            <p id="journalDateFormatted" class="journal-date-formatted">24 Mar 2026</p>
           </div>
-
-          <div id="quickQty" class="quick-qty" aria-label="Quantites rapides"></div>
-
-          <button type="submit" class="btn-primary">Ajouter</button>
-        </form>
+          <button id="nextDayBtn" class="btn-nav" aria-label="Jour suivant">Demain →</button>
+        </div>
+        <button id="todayBtn" class="btn-secondary">Aujourd'hui</button>
       </article>
 
+      <!-- Daily Summary -->
+      <article class="panel journal-summary">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <p class="summary-label">Total Calories</p>
+            <p id="journalTotalCalories" class="summary-value">0</p>
+            <p class="summary-unit">kcal</p>
+          </div>
+          <div class="summary-item">
+            <p class="summary-label">Total Protéines</p>
+            <p id="journalTotalProtein" class="summary-value">0</p>
+            <p class="summary-unit">g</p>
+          </div>
+          <div class="summary-item">
+            <p class="summary-label">Total Glucides</p>
+            <p id="journalTotalCarbs" class="summary-value">0</p>
+            <p class="summary-unit">g</p>
+          </div>
+          <div class="summary-item">
+            <p class="summary-label">Total Lipides</p>
+            <p id="journalTotalFat" class="summary-value">0</p>
+            <p class="summary-unit">g</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- Breakfast -->
+      <article class="panel meal-section">
+        <div class="meal-header">
+          <h3>🌅 Petit-déjeuner</h3>
+          <button class="btn-add-meal" data-meal-type="breakfast">+ Ajouter</button>
+        </div>
+        <ul id="meal-breakfast" class="meal-items-list"></ul>
+        <div id="meal-breakfast-totals" class="meal-totals-summary">
+          <span class="totals-badge">0 kcal</span>
+          <span class="totals-badge">P: 0g</span>
+          <span class="totals-badge">C: 0g</span>
+          <span class="totals-badge">L: 0g</span>
+        </div>
+      </article>
+
+      <!-- Lunch -->
+      <article class="panel meal-section">
+        <div class="meal-header">
+          <h3>🍽️ Déjeuner</h3>
+          <button class="btn-add-meal" data-meal-type="lunch">+ Ajouter</button>
+        </div>
+        <ul id="meal-lunch" class="meal-items-list"></ul>
+        <div id="meal-lunch-totals" class="meal-totals-summary">
+          <span class="totals-badge">0 kcal</span>
+          <span class="totals-badge">P: 0g</span>
+          <span class="totals-badge">C: 0g</span>
+          <span class="totals-badge">L: 0g</span>
+        </div>
+      </article>
+
+      <!-- Snack -->
+      <article class="panel meal-section">
+        <div class="meal-header">
+          <h3>🥜 Collation</h3>
+          <button class="btn-add-meal" data-meal-type="snack">+ Ajouter</button>
+        </div>
+        <ul id="meal-snack" class="meal-items-list"></ul>
+        <div id="meal-snack-totals" class="meal-totals-summary">
+          <span class="totals-badge">0 kcal</span>
+          <span class="totals-badge">P: 0g</span>
+          <span class="totals-badge">C: 0g</span>
+          <span class="totals-badge">L: 0g</span>
+        </div>
+      </article>
+
+      <!-- Dinner -->
+      <article class="panel meal-section">
+        <div class="meal-header">
+          <h3>🌙 Dîner</h3>
+          <button class="btn-add-meal" data-meal-type="dinner">+ Ajouter</button>
+        </div>
+        <ul id="meal-dinner" class="meal-items-list"></ul>
+        <div id="meal-dinner-totals" class="meal-totals-summary">
+          <span class="totals-badge">0 kcal</span>
+          <span class="totals-badge">P: 0g</span>
+          <span class="totals-badge">C: 0g</span>
+          <span class="totals-badge">L: 0g</span>
+        </div>
+      </article>
+
+      <!-- Modal to add item to meal -->
+      <dialog id="mealItemModal" class="modal">
+        <div class="modal-content">
+          <h3 id="mealItemModalTitle">Ajouter à Petit-déjeuner</h3>
+          <form id="mealItemForm" class="stack">
+            <fieldset>
+              <legend>Sélection type</legend>
+              <div class="selection-tabs">
+                <button type="button" class="selection-tab active" data-selection-type="product">Produit</button>
+                <button type="button" class="selection-tab" data-selection-type="recipe">Recette</button>
+              </div>
+            </fieldset>
+
+            <!-- Product Selection -->
+            <div id="selection-product" class="selection-panel active">
+              <label>
+                Produit *
+                <select id="mealItemProduct" required></select>
+              </label>
+              <label>
+                Quantité *
+                <input id="mealItemQuantity" type="number" min="0.1" step="0.1" required placeholder="Ex: 100">
+              </label>
+              <label>
+                Unité
+                <input id="mealItemUnit" type="text" readonly>
+              </label>
+            </div>
+
+            <!-- Recipe Selection -->
+            <div id="selection-recipe" class="selection-panel">
+              <label>
+                Recette *
+                <select id="mealItemRecipe"></select>
+              </label>
+              <label>
+                Portions *
+                <input id="mealItemRecipePortions" type="number" min="0.25" step="0.25" value="1" required>
+              </label>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" id="mealItemModalClose" class="btn-secondary">Annuler</button>
+              <button type="submit" class="btn-primary">Ajouter au repas</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+    </section>
+
+    <section id="tab-recipes" class="tab-panel">
       <article class="panel">
-        <h2>Prises du jour</h2>
-        <ul id="todayEntries" class="entry-list"></ul>
+        <div class="panel-head">
+          <h2>Mes Recettes</h2>
+          <button id="addRecipeBtn" class="btn-primary">+ Nouvelle Recette</button>
+        </div>
+        <div id="recipesList" class="recipes-list">
+          <p class="empty-state">Aucune recette. Créez-en une !</p>
+        </div>
       </article>
+
+      <!-- Modal création/édition recette -->
+      <dialog id="recipeModal" class="modal">
+        <div class="modal-content">
+          <h3 id="recipeModalTitle">Créer une recette</h3>
+          <form id="recipeForm" class="stack">
+            <label>
+              Nom de la recette *
+              <input id="recipeName" type="text" required placeholder="Ex: Poulet curry">
+            </label>
+
+            <label>
+              Description (optionnel)
+              <textarea id="recipeDescription" placeholder="Notes, instructions..."></textarea>
+            </label>
+
+            <label>
+              Portions (combien de portions donne cette recette)
+              <input id="recipeServings" type="number" min="1" step="1" value="1" required>
+            </label>
+
+            <fieldset>
+              <legend>Ingrédients</legend>
+              <div id="recipeIngredientsContainer" class="ingredients-container">
+                <!-- Dynamiquement ajouté -->
+              </div>
+              <button type="button" id="addIngredientBtn" class="btn-secondary">+ Ajouter ingrédient</button>
+            </fieldset>
+
+            <!-- Totaux de la recette (calculés) -->
+            <fieldset class="recipe-totals">
+              <legend>Totaux de la recette</legend>
+              <div class="totals-grid">
+                <div>
+                  <p class="label">Calories</p>
+                  <p id="recipeTotalCalories" class="value">0</p>
+                </div>
+                <div>
+                  <p class="label">Protéines</p>
+                  <p id="recipeTotalProtein" class="value">0</p> <span>g</span>
+                </div>
+                <div>
+                  <p class="label">Glucides</p>
+                  <p id="recipeTotalCarbs" class="value">0</p> <span>g</span>
+                </div>
+                <div>
+                  <p class="label">Lipides</p>
+                  <p id="recipeTotalFat" class="value">0</p> <span>g</span>
+                </div>
+              </div>
+
+              <hr style="margin: 1rem 0; opacity: 0.2;">
+
+              <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 0.5rem; font-weight: 600;">
+                Par portion :
+              </p>
+              <div class="totals-grid">
+                <div>
+                  <p class="label">Calories</p>
+                  <p id="recipePerPortionCalories" class="value">0</p>
+                </div>
+                <div>
+                  <p class="label">Protéines</p>
+                  <p id="recipePerPortionProtein" class="value">0</p> <span>g</span>
+                </div>
+                <div>
+                  <p class="label">Glucides</p>
+                  <p id="recipePerPortionCarbs" class="value">0</p> <span>g</span>
+                </div>
+                <div>
+                  <p class="label">Lipides</p>
+                  <p id="recipePerPortionFat" class="value">0</p> <span>g</span>
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="modal-actions">
+              <button type="button" id="recipeModalClose" class="btn-secondary">Annuler</button>
+              <button type="submit" class="btn-primary">Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+    </section>
+
+    <section id="tab-products" class="tab-panel">
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Ma Base Alimentaire</h2>
+          <div class="product-actions">
+            <button id="addProductBtn" class="btn-primary">+ Ajouter Produit</button>
+            <button id="importApiBtn" class="btn-secondary">Importer (OFF)</button>
+          </div>
+        </div>
+        <div id="productsList" class="products-grid">
+          <p class="empty-state">Chargement des produits...</p>
+        </div>
+      </article>
+
+      <!-- Modal d'ajout/édition produit -->
+      <dialog id="productModal" class="modal">
+        <div class="modal-content">
+          <h3 id="productModalTitle">Ajouter un produit</h3>
+          <form id="productForm" class="stack">
+            <label>
+              Nom *
+              <input id="productName" type="text" required placeholder="Ex: Poulet rôti">
+            </label>
+
+            <label>
+              Catégorie
+              <select id="productCategory">
+                <option value="protéines">Protéines</option>
+                <option value="glucides">Glucides</option>
+                <option value="lipides">Lipides</option>
+                <option value="fruits">Fruits</option>
+                <option value="légumes">Légumes</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+
+            <label>
+              Type d'unité
+              <select id="productUnitType">
+                <option value="g">Gramme (g)</option>
+                <option value="ml">Millilitre (ml)</option>
+                <option value="unit">Unité (ex: 1 œuf)</option>
+                <option value="portion">Portion</option>
+              </select>
+            </label>
+
+            <div class="quantity-row">
+              <label>
+                Portion référence *
+                <input id="productPortionSize" type="number" min="1" step="10" required placeholder="100">
+              </label>
+              <label>
+                Unité
+                <input id="productPortionUnit" type="text" readonly>
+              </label>
+            </div>
+
+            <fieldset>
+              <legend>Valeurs nutritionnelles (par portion)</legend>
+              <div class="quantity-row">
+                <label>
+                  Calories
+                  <input id="productCalories" type="number" min="0" step="0.1" required>
+                </label>
+                <label>
+                  Protéines (g)
+                  <input id="productProtein" type="number" min="0" step="0.1" required>
+                </label>
+              </div>
+              <div class="quantity-row">
+                <label>
+                  Glucides (g)
+                  <input id="productCarbs" type="number" min="0" step="0.1" required>
+                </label>
+                <label>
+                  Lipides (g)
+                  <input id="productFat" type="number" min="0" step="0.1" required>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="modal-actions">
+              <button type="button" id="productModalClose" class="btn-secondary">Annuler</button>
+              <button type="submit" class="btn-primary">Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
     </section>
 
     <section id="tab-history" class="tab-panel">
@@ -94,48 +401,122 @@
 
     <section id="tab-profile" class="tab-panel">
       <article class="panel">
-        <h2>Profil</h2>
+        <h2>Profil & Objectifs</h2>
         <form id="profileForm" class="stack">
-          <div class="quantity-row">
-            <label>
-              Taille (cm)
-              <input id="heightInput" type="number" min="100" max="250" step="1" inputmode="numeric" required>
-            </label>
-            <label>
-              Poids (kg)
-              <input id="weightInput" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
-            </label>
-          </div>
+          <!-- Données personnelles -->
+          <fieldset>
+            <legend>Données personnelles</legend>
+            <div class="quantity-row">
+              <label>
+                Taille (cm)
+                <input id="heightInput" type="number" min="100" max="250" step="1" inputmode="numeric" required>
+              </label>
+              <label>
+                Poids (kg)
+                <input id="weightInput" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
+              </label>
+            </div>
 
-          <div class="quantity-row">
+            <div class="quantity-row">
+              <label>
+                Age (ans)
+                <input id="ageInput" type="number" min="12" max="100" step="1" inputmode="numeric" required>
+              </label>
+              <label>
+                Sexe
+                <select id="genderSelect">
+                  <option value="male">Homme</option>
+                  <option value="female">Femme</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="quantity-row">
+              <label>
+                Activité physique
+                <select id="activityLevelSelect">
+                  <option value="sedentary">Très sédentaire (peu/pas d'exercice)</option>
+                  <option value="lightly_active">Légèrement actif (1-3 j/sem)</option>
+                  <option value="moderately_active">Modérément actif (3-5 j/sem)</option>
+                  <option value="very_active">Très actif (6-7 j/sem)</option>
+                  <option value="extremely_active">Extrêmement actif (entraînement intensif)</option>
+                </select>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- Objectif -->
+          <fieldset>
+            <legend>Objectif</legend>
             <label>
-              Age
-              <input id="ageInput" type="number" min="12" max="100" step="1" inputmode="numeric" required>
-            </label>
-            <label>
-              Objectif
+              Type d'objectif
               <select id="goalTypeSelect">
-                <option value="gain">Prise de masse</option>
-                <option value="maintain">Maintien</option>
-                <option value="cut">Perte de poids</option>
+                <option value="gain">Prise de masse (+10%)</option>
+                <option value="maintain">Maintien (0%)</option>
+                <option value="cut">Perte de poids (-20%)</option>
               </select>
             </label>
-          </div>
+          </fieldset>
 
-          <label>
-            Mode objectif proteines
-            <select id="targetModeSelect">
-              <option value="manual">Manuel</option>
-              <option value="auto">Calcule automatique</option>
-            </select>
-          </label>
+          <!-- Calculs TDEE -->
+          <fieldset>
+            <legend>Calculs (Mifflin-St Jeor)</legend>
+            <div class="calculation-display">
+              <div class="calc-item">
+                <p class="calc-label">Dépense de base (MB)</p>
+                <p id="tdeeBasalMetabolic" class="calc-value">0</p>
+                <p class="calc-unit">kcal/jour</p>
+              </div>
+              <div class="calc-item">
+                <p class="calc-label">TDEE (sans objectif)</p>
+                <p id="tdeeMaintenance" class="calc-value">0</p>
+                <p class="calc-unit">kcal/jour</p>
+              </div>
+              <div class="calc-item">
+                <p class="calc-label">Objectif quotidien</p>
+                <p id="tdeeDaily" class="calc-value">0</p>
+                <p class="calc-unit">kcal/jour</p>
+              </div>
+            </div>
+          </fieldset>
 
-          <label>
-            Objectif journalier (g)
-            <input id="manualTargetInput" type="number" min="40" max="400" step="1" inputmode="numeric" required>
-          </label>
+          <!-- Macros objectifs -->
+          <fieldset>
+            <legend>Objectifs macronutriments</legend>
+            <div class="quantity-row">
+              <label>
+                % Protéines
+                <input id="proteinPercentInput" type="number" min="10" max="50" step="1" value="30">
+              </label>
+              <label>
+                % Glucides
+                <input id="carbsPercentInput" type="number" min="20" max="70" step="1" value="40">
+              </label>
+              <label>
+                % Lipides
+                <input id="fatsPercentInput" type="number" min="10" max="50" step="1" value="30">
+              </label>
+            </div>
+            <p id="percentWarning" style="font-size: 0.85rem; color: #dc3545; margin: 0;"></p>
 
-          <p id="autoHint" class="hint"></p>
+            <div class="macro-targets-display">
+              <div class="macro-item">
+                <p class="macro-label">Protéines</p>
+                <p id="macroProteinTarget" class="macro-value">0</p>
+                <p class="macro-unit">g/jour</p>
+              </div>
+              <div class="macro-item">
+                <p class="macro-label">Glucides</p>
+                <p id="macroCarbsTarget" class="macro-value">0</p>
+                <p class="macro-unit">g/jour</p>
+              </div>
+              <div class="macro-item">
+                <p class="macro-label">Lipides</p>
+                <p id="macroFatsTarget" class="macro-value">0</p>
+                <p class="macro-unit">g/jour</p>
+              </div>
+            </div>
+          </fieldset>
 
           <button type="submit" class="btn-primary">Enregistrer le profil</button>
         </form>
@@ -156,6 +537,7 @@
     </li>
   </template>
 
+  <script src="db.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

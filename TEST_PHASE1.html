@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Phase 1 - Dexie</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+    .test { margin: 10px 0; padding: 10px; border: 1px solid #00ff00; }
+    .pass { background: #003300; }
+    .fail { background: #330000; color: #ff0000; }
+    .pending { background: #333300; color: #ffff00; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Test Phase 1 - Dexie + Migration</h1>
+  <div id="results"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js"></script>
+  <script src="db.js"></script>
+
+  <script>
+    const results = document.getElementById('results');
+
+    async function runTests() {
+      console.group('Phase 1 Tests');
+
+      // Test 1: Dexie chargé
+      let test1 = document.createElement('div');
+      test1.className = 'test ' + (typeof Dexie !== 'undefined' ? 'pass' : 'fail');
+      test1.textContent = '1. Dexie CDN: ' + (typeof Dexie !== 'undefined' ? '✓ CHARGÉ' : '✗ ERREUR');
+      results.appendChild(test1);
+      console.log(test1.textContent);
+
+      // Test 2: db.js accessible
+      let test2 = document.createElement('div');
+      test2.className = 'test ' + (typeof window.SuiviDB !== 'undefined' ? 'pass' : 'fail');
+      test2.textContent = '2. db.js API: ' + (typeof window.SuiviDB !== 'undefined' ? '✓ ACCESSIBLE' : '✗ ERREUR');
+      results.appendChild(test2);
+      console.log(test2.textContent);
+
+      // Test 3: Initialize DB
+      let test3 = document.createElement('div');
+      test3.className = 'test pending';
+      test3.textContent = '3. Initialiser DB: ...';
+      results.appendChild(test3);
+      
+      try {
+        await SuiviDB.initializeDatabase();
+        test3.className = 'test pass';
+        test3.textContent = '3. Initialiser DB: ✓ SUCCÈS';
+        console.log(test3.textContent);
+      } catch (err) {
+        test3.className = 'test fail';
+        test3.textContent = '3. Initialiser DB: ✗ ERREUR - ' + err.message;
+        console.error(test3.textContent);
+      }
+
+      // Test 4: Compter produits
+      let test4 = document.createElement('div');
+      test4.className = 'test pending';
+      test4.textContent = '4. Compter produits: ...';
+      results.appendChild(test4);
+
+      try {
+        const count = await SuiviDB.db.produits.count();
+        test4.className = 'test pass';
+        test4.textContent = `4. Compter produits: ✓ ${count} produits trouvés`;
+        console.log(test4.textContent);
+      } catch (err) {
+        test4.className = 'test fail';
+        test4.textContent = '4. Compter produits: ✗ ERREUR - ' + err.message;
+        console.error(test4.textContent);
+      }
+
+      // Test 5: Profil par défaut
+      let test5 = document.createElement('div');
+      test5.className = 'test pending';
+      test5.textContent = '5. Profil par défaut: ...';
+      results.appendChild(test5);
+
+      try {
+        const profils = await SuiviDB.db.profil.toArray();
+        test5.className = profils.length > 0 ? 'test pass' : 'test pending';
+        test5.textContent = `5. Profil par défaut: ✓ ${profils.length} profil(s)`;
+        console.log(test5.textContent);
+      } catch (err) {
+        test5.className = 'test fail';
+        test5.textContent = '5. Profil par défaut: ✗ ERREUR - ' + err.message;
+        console.error(test5.textContent);
+      }
+
+      // Test 6: Run DB tests
+      let test6 = document.createElement('div');
+      test6.className = 'test pending';
+      test6.textContent = '6. Suite de tests DB: ...';
+      results.appendChild(test6);
+
+      try {
+        const success = await SuiviDB.testDatabase();
+        test6.className = success ? 'test pass' : 'test fail';
+        test6.textContent = `6. Suite de tests DB: ✓ RÉUSSIS`;
+        console.log(test6.textContent);
+      } catch (err) {
+        test6.className = 'test fail';
+        test6.textContent = '6. Suite de tests DB: ✗ ERREUR - ' + err.message;
+        console.error(test6.textContent);
+      }
+
+      console.groupEnd();
+
+      // Final message
+      let final = document.createElement('div');
+      final.style.marginTop = '20px';
+      final.style.fontSize = '16px';
+      final.style.fontWeight = 'bold';
+      final.textContent = '✅ Phase 1 - Base de données initialisée avec succès !';
+      results.appendChild(final);
+    }
+
+    // Run tests when DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', runTests);
+    } else {
+      runTests();
+    }
+  </script>
+</body>
+</html>
