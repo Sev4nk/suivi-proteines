@@ -371,6 +371,14 @@ async function pullCloudSync() {
       throw new Error("format invalide");
     }
 
+    const localUpdatedAt = Date.parse(state?.updatedAt || "") || 0;
+    const cloudUpdatedAt = Date.parse(payload.state?.updatedAt || payload.updatedAt || "") || 0;
+
+    if (cloudUpdatedAt > 0 && cloudUpdatedAt <= localUpdatedAt) {
+      setSyncStatus(`Donnees locales deja a jour (${new Date().toLocaleTimeString("fr-FR")})`);
+      return true;
+    }
+
     state = sanitizeState(payload.state);
     await window.SuiviDB.restoreDatabase(payload.db);
     saveState();
@@ -559,7 +567,7 @@ async function init() {
   renderAll();
 
   if (hasCloudSyncConfigured()) {
-    await syncCloudRoundTrip();
+    await pullCloudSync();
   }
 
   registerServiceWorker();
@@ -1250,6 +1258,10 @@ function sanitizeState(raw) {
     token: String(raw?.sync?.token || "")
   };
 
+  if (raw?.updatedAt) {
+    safe.updatedAt = raw.updatedAt;
+  }
+
   safe.foods = Array.isArray(raw.foods) && raw.foods.length ? raw.foods : safe.foods;
   safe.entriesByDate = typeof raw.entriesByDate === "object" && raw.entriesByDate ? raw.entriesByDate : {};
   safe.lastFoodId = raw.lastFoodId || safe.foods[0].id;
@@ -1373,6 +1385,7 @@ function getDefaultProfileData(profileId) {
 }
 
 function saveState() {
+  state.updatedAt = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
