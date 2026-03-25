@@ -92,6 +92,7 @@ Mobile:
 
 - Tirer vers le bas tout en haut de la page lance une synchronisation complete: "Envoyer vers cloud" puis "Charger depuis cloud".
 - Si le navigateur fait un refresh natif complet de la page, l'app relance aussi automatiquement une synchronisation complete au demarrage (si URL + token sont renseignes).
+- Protection anti-ecrasement: si un telephone tente d'envoyer une version plus ancienne que le cloud, l'envoi est refuse (HTTP 409) et l'app recharge la version cloud la plus recente.
 
 ### Option recommandee sans Vercel: Cloudflare Worker + KV
 

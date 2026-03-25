@@ -322,6 +322,11 @@ async function pushCloudSync() {
       body: JSON.stringify(payload)
     });
 
+    if (response.status === 409) {
+      setSyncStatus("Cloud plus recent detecte. Faites un chargement cloud.", true);
+      return false;
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -417,7 +422,9 @@ async function syncCloudRoundTrip() {
       body: JSON.stringify(payload)
     });
 
-    if (!postResponse.ok) {
+    if (postResponse.status === 409) {
+      setSyncStatus("Cloud plus recent detecte, chargement de la version cloud...");
+    } else if (!postResponse.ok) {
       throw new Error(`envoi HTTP ${postResponse.status}`);
     }
 

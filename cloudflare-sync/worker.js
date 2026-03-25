@@ -57,6 +57,28 @@ export default {
         return json({ error: "invalid-payload" }, 400, corsHeaders);
       }
 
+      const incomingUpdatedAtMs = Date.parse(String(body.updatedAt || "")) || 0;
+      const existingPayloadRaw = await env.SYNC_STORE.get(storageKey);
+      if (existingPayloadRaw) {
+        try {
+          const existingPayload = JSON.parse(existingPayloadRaw);
+          const existingUpdatedAtMs = Date.parse(String(existingPayload?.updatedAt || "")) || 0;
+          if (incomingUpdatedAtMs > 0 && existingUpdatedAtMs > 0 && incomingUpdatedAtMs < existingUpdatedAtMs) {
+            return json(
+              {
+                error: "stale-payload",
+                message: "Cloud already has a newer version",
+                cloudUpdatedAt: existingPayload.updatedAt
+              },
+              409,
+              corsHeaders
+            );
+          }
+        } catch {
+          // If current cloud payload is unreadable, ignore and overwrite it.
+        }
+      }
+
       await env.SYNC_STORE.put(storageKey, JSON.stringify(body));
 
       return json(
