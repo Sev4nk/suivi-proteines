@@ -92,6 +92,69 @@ Mobile:
 
 - Tirer vers le bas tout en haut de la page lance un "Charger depuis cloud".
 
+### Option recommandee sans Vercel: Cloudflare Worker + KV
+
+Le projet contient un mini endpoint pret a deployer dans [cloudflare-sync/worker.js](cloudflare-sync/worker.js).
+
+Ce que tu vas coller dans l'app ensuite:
+
+1. URL de synchronisation: URL du Worker (meme URL sur les 2 telephones)
+2. Cle API: token `SYNC_TOKEN` (meme token sur les 2 telephones)
+
+Exemple d'URL finale a coller:
+
+```text
+https://suivi-proteines-sync.<ton-subdomain>.workers.dev
+```
+
+#### Deploiement rapide
+
+Prerequis:
+
+- Compte Cloudflare gratuit
+- Node.js installe
+
+Commandes (dans `cloudflare-sync/`):
+
+```bash
+npm init -y
+npm install -D wrangler
+npx wrangler login
+npx wrangler kv namespace create SYNC_STORE
+```
+
+1. Copie `wrangler.toml.example` vers `wrangler.toml`
+2. Remplace `REPLACE_WITH_KV_NAMESPACE_ID` par l'ID retourne par la commande KV
+3. Definis le secret token:
+
+```bash
+npx wrangler secret put SYNC_TOKEN
+```
+
+4. Deploy:
+
+```bash
+npx wrangler deploy
+```
+
+Wrangler te renvoie l'URL publique `...workers.dev`.
+
+#### Test rapide du endpoint
+
+Avec token `MON_TOKEN` et URL `MON_URL`:
+
+```bash
+curl -X POST "MON_URL" \
+   -H "Content-Type: application/json" \
+   -H "Authorization: Bearer MON_TOKEN" \
+   -d '{"app":"protein-tracker","version":2,"state":{},"db":{}}'
+
+curl -X GET "MON_URL" \
+   -H "Authorization: Bearer MON_TOKEN"
+```
+
+Si GET renvoie ton JSON, c'est ok: colle la meme URL + token dans les 2 telephones.
+
 ## GitHub (depot distant)
 
 1. Cree un nouveau depot vide sur GitHub, par exemple `suivi-proteines`.
