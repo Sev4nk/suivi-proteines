@@ -177,6 +177,7 @@ const els = {
 let currentDate = new Date();
 let currentMealType = null;
 let touchStartY = null;
+let isCloudSyncRunning = false;
 
 function getActiveProfileId() {
   const profileId = state?.activeProfileId;
@@ -266,14 +267,20 @@ function getSyncHeaders() {
 }
 
 async function pushCloudSync() {
+  if (isCloudSyncRunning) {
+    setSyncStatus("Synchronisation deja en cours...");
+    return false;
+  }
+
   saveSyncSettingsFromForm();
   const url = state?.sync?.url;
   if (!url) {
     setSyncStatus("Renseignez une URL de synchronisation.", true);
-    return;
+    return false;
   }
 
   try {
+    isCloudSyncRunning = true;
     setSyncStatus("Envoi vers cloud en cours...");
     const payload = {
       app: "protein-tracker",
@@ -294,20 +301,30 @@ async function pushCloudSync() {
     }
 
     setSyncStatus(`Synchronise le ${new Date().toLocaleString("fr-FR")}`);
+    return true;
   } catch (error) {
     setSyncStatus(`Echec synchronisation: ${error.message}`, true);
+    return false;
+  } finally {
+    isCloudSyncRunning = false;
   }
 }
 
 async function pullCloudSync() {
+  if (isCloudSyncRunning) {
+    setSyncStatus("Synchronisation deja en cours...");
+    return false;
+  }
+
   saveSyncSettingsFromForm();
   const url = state?.sync?.url;
   if (!url) {
     setSyncStatus("Renseignez une URL de synchronisation.", true);
-    return;
+    return false;
   }
 
   try {
+    isCloudSyncRunning = true;
     setSyncStatus("Chargement depuis cloud...");
     const response = await fetch(url, {
       method: "GET",
@@ -334,8 +351,79 @@ async function pullCloudSync() {
     renderAll();
 
     setSyncStatus(`Donnees rechargees le ${new Date().toLocaleString("fr-FR")}`);
+    return true;
   } catch (error) {
     setSyncStatus(`Echec chargement: ${error.message}`, true);
+    return false;
+  } finally {
+    isCloudSyncRunning = false;
+  }
+}
+
+async function syncCloudRoundTrip() {
+  if (isCloudSyncRunning) {
+    setSyncStatus("Synchronisation deja en cours...");
+    return;
+  }
+
+  saveSyncSettingsFromForm();
+  const url = state?.sync?.url;
+  if (!url) {
+    setSyncStatus("Renseignez une URL de synchronisation.", true);
+    return;
+  }
+
+  try {
+    isCloudSyncRunning = true;
+    setSyncStatus("Synchronisation complete: envoi puis chargement...");
+
+    const payload = {
+      app: "protein-tracker",
+      version: 2,
+      updatedAt: new Date().toISOString(),
+      state,
+      db: await window.SuiviDB.snapshotDatabase()
+    };
+
+    const postResponse = await fetch(url, {
+      method: "POST",
+      headers: getSyncHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!postResponse.ok) {
+      throw new Error(`envoi HTTP ${postResponse.status}`);
+    }
+
+    const getResponse = await fetch(url, {
+      method: "GET",
+      headers: getSyncHeaders()
+    });
+
+    if (!getResponse.ok) {
+      throw new Error(`chargement HTTP ${getResponse.status}`);
+    }
+
+    const remotePayload = await getResponse.json();
+    if (!remotePayload || !remotePayload.state || !remotePayload.db) {
+      throw new Error("format invalide");
+    }
+
+    state = sanitizeState(remotePayload.state);
+    await window.SuiviDB.restoreDatabase(remotePayload.db);
+    saveState();
+
+    renderProfileSwitch();
+    renderSyncSettings();
+    await renderFoodSelect();
+    renderProfileForm();
+    renderAll();
+
+    setSyncStatus(`Synchronisation complete le ${new Date().toLocaleString("fr-FR")}`);
+  } catch (error) {
+    setSyncStatus(`Echec synchronisation complete: ${error.message}`, true);
+  } finally {
+    isCloudSyncRunning = false;
   }
 }
 
@@ -362,7 +450,7 @@ function bindPullToSync() {
     const delta = endY - touchStartY;
     touchStartY = null;
     if (delta > 90) {
-      pullCloudSync();
+      syncCloudRoundTrip();
     }
   }, { passive: true });
 }

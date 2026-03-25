@@ -90,7 +90,7 @@ Requete d'envoi (POST):
 
 Mobile:
 
-- Tirer vers le bas tout en haut de la page lance un "Charger depuis cloud".
+- Tirer vers le bas tout en haut de la page lance une synchronisation complete: "Envoyer vers cloud" puis "Charger depuis cloud".
 
 ### Option recommandee sans Vercel: Cloudflare Worker + KV
 
