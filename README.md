@@ -8,13 +8,15 @@ Ouvrir, ajouter une prise, voir le total, terminer.
 
 ## Fonctions
 
-- Profil: taille, poids, age, objectif, cible proteines (manuelle ou auto)
+- Profils: switch rapide en haut avec 2 boutons (Max en bleu, Lili en rouge)
+- Profil par personne: taille, poids, age, objectif, macros et cible proteines
 - Journal: ajout rapide aliment standard + quantite
 - Calcul automatique des proteines
 - Total du jour + progression
 - Historique journalier avec detail des prises
 - Suppression d'une prise
 - Export/import JSON
+- Synchronisation JSON cloud (URL GET/POST configurable)
 - Stockage local navigateur (localStorage)
 - Mode offline basique (service worker)
 
@@ -42,6 +44,53 @@ Option recommandee (pour service worker/PWA):
 
 - Donnees stockees uniquement localement dans ce navigateur.
 - Changer de navigateur/appareil ne transfere pas les donnees sans export/import.
+
+## Profils Max / Lili
+
+- Le tracking se fait par profil actif.
+- Le bouton actif est en surbrillance.
+- Les produits et recettes restent communs.
+- Les repas/journaux sont separes entre Max et Lili.
+
+## Synchronisation JSON cloud (leger)
+
+Le bloc "Synchronisation JSON (cloud)" est disponible dans l'onglet Profil.
+
+Principe:
+
+1. Renseigner une URL de sync.
+2. Optionnel: renseigner une cle API/token.
+3. `Envoyer vers cloud`: envoie l'etat complet (profils + DB locale Dexie) en POST.
+4. `Charger depuis cloud`: recharge l'etat complet en GET.
+
+Format attendu de la reponse GET:
+
+```json
+{
+   "app": "protein-tracker",
+   "version": 2,
+   "state": { "...": "..." },
+   "db": {
+      "produits": [],
+      "recettes": [],
+      "recetteProduits": [],
+      "repas": [],
+      "repasElements": [],
+      "profil": []
+   }
+}
+```
+
+Requete d'envoi (POST):
+
+- Header `Content-Type: application/json`
+- Header `Authorization: Bearer <token>` si token renseigne
+- Header `x-sync-token: <token>` si token renseigne
+- Body JSON identique au format ci-dessus
+
+Mobile:
+
+- Tirer vers le bas tout en haut de la page lance un "Charger depuis cloud".
 
 ## GitHub (depot distant)
 

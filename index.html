@@ -24,6 +24,11 @@
       <p id="todayLabel" class="today-label"></p>
     </header>
 
+    <section class="profile-switch" aria-label="Choix du profil actif">
+      <button id="profileMaxBtn" type="button" class="profile-chip profile-chip-max" data-profile-id="max">Max</button>
+      <button id="profileLiliBtn" type="button" class="profile-chip profile-chip-lili" data-profile-id="lili">Lili</button>
+    </section>
+
     <section class="panel panel-total" aria-live="polite">
       <div>
         <p class="metric-label">🥩 Total du jour</p>
@@ -435,6 +440,7 @@
     <section id="tab-profile" class="tab-panel">
       <article class="panel">
         <h2>Profil & Objectifs</h2>
+        <p id="activeProfileHint" class="hint" style="margin-bottom: 0.8rem;"></p>
         <form id="profileForm" class="stack">
           <!-- Données personnelles -->
           <fieldset>
@@ -552,6 +558,26 @@
           </fieldset>
 
           <button type="submit" class="btn-primary">Enregistrer le profil</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <h2>Synchronisation JSON (cloud)</h2>
+        <p class="hint">Utilisez une URL de sync (GET/POST) pour partager les donnees entre telephones.</p>
+        <form id="syncForm" class="stack" autocomplete="off">
+          <label>
+            URL de synchronisation
+            <input id="syncUrlInput" type="url" placeholder="https://.../sync" inputmode="url">
+          </label>
+          <label>
+            Cle API (optionnel)
+            <input id="syncTokenInput" type="password" placeholder="Bearer token / secret">
+          </label>
+          <div class="history-actions">
+            <button id="syncPullBtn" type="button" class="btn-secondary">Charger depuis cloud</button>
+            <button id="syncPushBtn" type="button" class="btn-primary">Envoyer vers cloud</button>
+          </div>
+          <p id="syncStatus" class="hint">Aucune synchronisation effectuee.</p>
         </form>
       </article>
     </section>

@@ -5,6 +5,11 @@
 
 const STORAGE_KEY = "protein-tracker-state-v1";
 
+const PROFILE_CONFIG = {
+  max: { id: "max", label: "Max", accent: "blue" },
+  lili: { id: "lili", label: "Lili", accent: "red" }
+};
+
 // Constantes héritage (compatibilité v1)
 const GOAL_MULTIPLIERS = {
   gain: 2.0,
@@ -46,6 +51,9 @@ const els = {
   progressPct: document.getElementById("progressPct"),
   progressFill: document.getElementById("progressFill"),
   progressBarWrap: document.getElementById("progressBarWrap"),
+  profileMaxBtn: document.getElementById("profileMaxBtn"),
+  profileLiliBtn: document.getElementById("profileLiliBtn"),
+  activeProfileHint: document.getElementById("activeProfileHint"),
 
   tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
   tabPanels: {
@@ -85,6 +93,12 @@ const els = {
   macroProteinTarget: document.getElementById("macroProteinTarget"),
   macroCarbsTarget: document.getElementById("macroCarbsTarget"),
   macroFatsTarget: document.getElementById("macroFatsTarget"),
+  syncForm: document.getElementById("syncForm"),
+  syncUrlInput: document.getElementById("syncUrlInput"),
+  syncTokenInput: document.getElementById("syncTokenInput"),
+  syncPullBtn: document.getElementById("syncPullBtn"),
+  syncPushBtn: document.getElementById("syncPushBtn"),
+  syncStatus: document.getElementById("syncStatus"),
 
   // Produits
   productModal: document.getElementById("productModal"),
@@ -162,6 +176,196 @@ const els = {
 // Global state for meal management
 let currentDate = new Date();
 let currentMealType = null;
+let touchStartY = null;
+
+function getActiveProfileId() {
+  const profileId = state?.activeProfileId;
+  return PROFILE_CONFIG[profileId] ? profileId : "max";
+}
+
+function getActiveProfile() {
+  const profileId = getActiveProfileId();
+  if (!state.profiles) {
+    state.profiles = {};
+  }
+
+  if (!state.profiles[profileId]) {
+    state.profiles[profileId] = getDefaultProfileData(profileId);
+  }
+
+  return state.profiles[profileId];
+}
+
+function getActiveProfileLabel() {
+  return PROFILE_CONFIG[getActiveProfileId()]?.label || "Max";
+}
+
+function renderProfileSwitch() {
+  const profileId = getActiveProfileId();
+  els.profileMaxBtn?.classList.toggle("active", profileId === "max");
+  els.profileLiliBtn?.classList.toggle("active", profileId === "lili");
+
+  if (els.activeProfileHint) {
+    els.activeProfileHint.textContent = `Profil actif: ${getActiveProfileLabel()}`;
+  }
+}
+
+function switchActiveProfile(profileId) {
+  if (!PROFILE_CONFIG[profileId]) {
+    return;
+  }
+
+  state.activeProfileId = profileId;
+  saveState();
+  renderProfileSwitch();
+  renderProfileForm();
+  renderSummary();
+  renderJournalMacroProgress();
+  renderMealsForDate();
+}
+
+function renderSyncSettings() {
+  if (els.syncUrlInput) {
+    els.syncUrlInput.value = state?.sync?.url || "";
+  }
+  if (els.syncTokenInput) {
+    els.syncTokenInput.value = state?.sync?.token || "";
+  }
+}
+
+function saveSyncSettingsFromForm() {
+  if (!state.sync) {
+    state.sync = { url: "", token: "" };
+  }
+
+  state.sync.url = String(els.syncUrlInput?.value || "").trim();
+  state.sync.token = String(els.syncTokenInput?.value || "");
+  saveState();
+}
+
+function setSyncStatus(message, isError = false) {
+  if (!els.syncStatus) {
+    return;
+  }
+  els.syncStatus.textContent = message;
+  els.syncStatus.style.color = isError ? "#b32f39" : "";
+}
+
+function getSyncHeaders() {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+
+  const token = state?.sync?.token;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+    headers["x-sync-token"] = token;
+  }
+
+  return headers;
+}
+
+async function pushCloudSync() {
+  saveSyncSettingsFromForm();
+  const url = state?.sync?.url;
+  if (!url) {
+    setSyncStatus("Renseignez une URL de synchronisation.", true);
+    return;
+  }
+
+  try {
+    setSyncStatus("Envoi vers cloud en cours...");
+    const payload = {
+      app: "protein-tracker",
+      version: 2,
+      updatedAt: new Date().toISOString(),
+      state,
+      db: await window.SuiviDB.snapshotDatabase()
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: getSyncHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    setSyncStatus(`Synchronise le ${new Date().toLocaleString("fr-FR")}`);
+  } catch (error) {
+    setSyncStatus(`Echec synchronisation: ${error.message}`, true);
+  }
+}
+
+async function pullCloudSync() {
+  saveSyncSettingsFromForm();
+  const url = state?.sync?.url;
+  if (!url) {
+    setSyncStatus("Renseignez une URL de synchronisation.", true);
+    return;
+  }
+
+  try {
+    setSyncStatus("Chargement depuis cloud...");
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getSyncHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    if (!payload || !payload.state || !payload.db) {
+      throw new Error("format invalide");
+    }
+
+    state = sanitizeState(payload.state);
+    await window.SuiviDB.restoreDatabase(payload.db);
+    saveState();
+
+    renderProfileSwitch();
+    renderSyncSettings();
+    await renderFoodSelect();
+    renderProfileForm();
+    renderAll();
+
+    setSyncStatus(`Donnees rechargees le ${new Date().toLocaleString("fr-FR")}`);
+  } catch (error) {
+    setSyncStatus(`Echec chargement: ${error.message}`, true);
+  }
+}
+
+function bindPullToSync() {
+  document.addEventListener("touchstart", (event) => {
+    if (window.scrollY === 0 && event.touches?.length === 1) {
+      touchStartY = event.touches[0].clientY;
+    } else {
+      touchStartY = null;
+    }
+  }, { passive: true });
+
+  document.addEventListener("touchend", (event) => {
+    if (touchStartY === null || window.scrollY > 0) {
+      return;
+    }
+
+    const endY = event.changedTouches?.[0]?.clientY;
+    if (!Number.isFinite(endY)) {
+      touchStartY = null;
+      return;
+    }
+
+    const delta = endY - touchStartY;
+    touchStartY = null;
+    if (delta > 90) {
+      pullCloudSync();
+    }
+  }, { passive: true });
+}
 
 function openDialog(dialogEl) {
   if (!dialogEl) {
@@ -193,6 +397,20 @@ function closeDialog(dialogEl) {
   document.body.classList.remove("modal-open");
 }
 
+async function migrateMealsWithoutProfileId() {
+  const legacyMeals = await window.SuiviDB.db.repas
+    .filter((meal) => !meal.profileId)
+    .toArray();
+
+  if (legacyMeals.length === 0) {
+    return;
+  }
+
+  for (const meal of legacyMeals) {
+    await window.SuiviDB.db.repas.update(meal.id, { profileId: "max" });
+  }
+}
+
 // ============ INITIALIZATION ASYNC ============
 
 async function init() {
@@ -209,6 +427,9 @@ async function init() {
 
   // Charger l'état depuis localStorage (compatibilité v1)
   loadStateFromStorage();
+  await migrateMealsWithoutProfileId();
+  renderProfileSwitch();
+  renderSyncSettings();
 
   // Configurer UI
   await renderFoodSelect();
@@ -230,6 +451,9 @@ function bindEvents() {
   els.tabButtons.forEach((btn) => {
     btn.addEventListener("click", () => activateTab(btn.dataset.tab));
   });
+
+  els.profileMaxBtn?.addEventListener("click", () => switchActiveProfile("max"));
+  els.profileLiliBtn?.addEventListener("click", () => switchActiveProfile("lili"));
 
   if (els.foodSelect) {
     els.foodSelect.addEventListener("change", () => {
@@ -286,6 +510,10 @@ function bindEvents() {
   els.exportBtn.addEventListener("click", exportData);
   els.importFile.addEventListener("change", importData);
 
+  els.syncPushBtn?.addEventListener("click", pushCloudSync);
+  els.syncPullBtn?.addEventListener("click", pullCloudSync);
+  els.syncForm?.addEventListener("change", saveSyncSettingsFromForm);
+
   // Événements produits
   els.addProductBtn.addEventListener("click", () => openProductModal());
   els.importApiBtn.addEventListener("click", () => importFromOpenFoodFacts());
@@ -339,6 +567,8 @@ function bindEvents() {
       switchSelectionType(selectionType);
     });
   });
+
+  bindPullToSync();
 }
 
 function activateTab(tabName) {
@@ -353,6 +583,7 @@ function activateTab(tabName) {
 
 function renderAll() {
   els.todayLabel.textContent = toDisplayDate(todayKey());
+  renderProfileSwitch();
   updateUnitAndQuickQty();
   renderSummary();
   renderTodayEntries();
@@ -415,24 +646,26 @@ function updateUnitAndQuickQty() {
 }
 
 function getProteinTargetFromProfile() {
-  const tdee = safeNumber(state?.profile?.tdeeDaily);
-  const proteinPct = safeNumber(state?.profile?.macroPercentProtein);
+  const profile = getActiveProfile();
+  const tdee = safeNumber(profile?.tdeeDaily);
+  const proteinPct = safeNumber(profile?.macroPercentProtein);
 
   if (tdee > 0 && proteinPct > 0) {
     return round((tdee * (proteinPct / 100)) / 4, 0);
   }
 
-  const weight = clampFloat(state?.profile?.weightKg || 70, 30, 250);
-  const goal = state?.profile?.goalType || "maintain";
+  const weight = clampFloat(profile?.weightKg || 70, 30, 250);
+  const goal = profile?.goalType || "maintain";
   const multiplier = GOAL_MULTIPLIERS[goal] || GOAL_MULTIPLIERS.maintain;
   return round(weight * multiplier, 0);
 }
 
 function getMacroTargetsFromProfile() {
-  const tdee = safeNumber(state?.profile?.tdeeDaily || state?.profile?.calorieTarget);
-  const proteinPct = safeNumber(state?.profile?.macroPercentProtein);
-  const carbsPct = safeNumber(state?.profile?.macroPercentCarbs);
-  const fatsPct = safeNumber(state?.profile?.macroPercentFats);
+  const profile = getActiveProfile();
+  const tdee = safeNumber(profile?.tdeeDaily || profile?.calorieTarget);
+  const proteinPct = safeNumber(profile?.macroPercentProtein);
+  const carbsPct = safeNumber(profile?.macroPercentCarbs);
+  const fatsPct = safeNumber(profile?.macroPercentFats);
 
   const caloriesTarget = tdee > 0 ? tdee : 2000;
   const proteinTarget = proteinPct > 0 ? (caloriesTarget * (proteinPct / 100)) / 4 : getProteinTargetFromProfile();
@@ -478,7 +711,12 @@ async function getMealTotalsForDate(dateStr) {
   let totalCarb = 0;
   let totalFat = 0;
 
-  const repas = await window.SuiviDB.db.repas.where("date").equals(dateStr).toArray();
+  const activeProfileId = getActiveProfileId();
+  const repas = await window.SuiviDB.db.repas
+    .where("date")
+    .equals(dateStr)
+    .and((meal) => meal.profileId === activeProfileId)
+    .toArray();
   for (const meal of repas) {
     const items = await window.SuiviDB.db.repasElements.where("repasId").equals(meal.id).toArray();
     for (const item of items) {
@@ -583,7 +821,7 @@ function renderHistory() {
 }
 
 function renderProfileForm() {
-  const p = state.profile;
+  const p = getActiveProfile();
   els.heightInput.value = p.heightCm;
   els.weightInput.value = p.weightKg;
   els.ageInput.value = p.age;
@@ -710,12 +948,12 @@ function saveProfileFromForm() {
     macroPercentFats: fatsPercent
   };
 
-  state.profile = next;
+  state.profiles[getActiveProfileId()] = next;
   saveState();
   updateProfileCalculations();
   renderSummary();
   renderJournalMacroProgress();
-  alert('✓ Profil enregistré avec succès !');
+  alert(`✓ Profil ${getActiveProfileLabel()} enregistré avec succès !`);
 }
 
 function addEntry() {
@@ -772,12 +1010,13 @@ function removeEntry(dateKey, entryId) {
   renderHistory();
 }
 
-function exportData() {
+async function exportData() {
   const payload = {
     exportedAt: new Date().toISOString(),
     app: "protein-tracker",
-    version: 1,
-    state
+    version: 2,
+    state,
+    db: await window.SuiviDB.snapshotDatabase()
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -796,18 +1035,23 @@ function importData(event) {
   }
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const parsed = JSON.parse(String(reader.result));
       const incoming = parsed.state;
-      if (!incoming || !incoming.profile || !incoming.entriesByDate || !Array.isArray(incoming.foods)) {
+      if (!incoming || !Array.isArray(incoming.foods)) {
         alert("Fichier invalide.");
         return;
       }
 
       state = sanitizeState(incoming);
+      if (parsed.db) {
+        await window.SuiviDB.restoreDatabase(parsed.db);
+      }
       saveState();
-      renderFoodSelect();
+      await renderFoodSelect();
+      renderProfileSwitch();
+      renderSyncSettings();
       renderProfileForm();
       renderAll();
       alert("Import termine.");
@@ -824,42 +1068,54 @@ function importData(event) {
 function sanitizeState(raw) {
   const safe = getDefaultState();
 
-  const height = clampInt(raw.profile?.heightCm || 175, 100, 250);
-  const weight = clampFloat(raw.profile?.weightKg || 70, 30, 250);
-  const age = clampInt(raw.profile?.age || 30, 12, 100);
-  const gender = (raw.profile?.gender === 'male' || raw.profile?.gender === 'female') ? raw.profile.gender : 'male';
-  const activityLevel = Object.keys(ACTIVITY_FACTORS).includes(raw.profile?.activityLevel) ? raw.profile.activityLevel : 'moderately_active';
-  const goalType = ["gain", "maintain", "cut"].includes(raw.profile?.goalType) ? raw.profile.goalType : "maintain";
-  const macroProtein = clampInt(raw.profile?.macroPercentProtein || 30, 10, 50);
-  const macroCarbs = clampInt(raw.profile?.macroPercentCarbs || 40, 20, 70);
-  const macroFats = clampInt(raw.profile?.macroPercentFats || 30, 10, 50);
+  const buildProfileFromRaw = (rawProfile, fallbackProfile) => {
+    const base = fallbackProfile || getDefaultProfileData('max');
+    const height = clampInt(rawProfile?.heightCm || base.heightCm, 100, 250);
+    const weight = clampFloat(rawProfile?.weightKg || base.weightKg, 30, 250);
+    const age = clampInt(rawProfile?.age || base.age, 12, 100);
+    const gender = (rawProfile?.gender === 'male' || rawProfile?.gender === 'female') ? rawProfile.gender : base.gender;
+    const activityLevel = Object.keys(ACTIVITY_FACTORS).includes(rawProfile?.activityLevel) ? rawProfile.activityLevel : base.activityLevel;
+    const goalType = ["gain", "maintain", "cut"].includes(rawProfile?.goalType) ? rawProfile.goalType : base.goalType;
+    const macroProtein = clampInt(rawProfile?.macroPercentProtein || base.macroPercentProtein, 10, 50);
+    const macroCarbs = clampInt(rawProfile?.macroPercentCarbs || base.macroPercentCarbs, 20, 70);
+    const macroFats = clampInt(rawProfile?.macroPercentFats || base.macroPercentFats, 10, 50);
 
-  // Recalculer TDEE
-  let bmr = 0;
-  if (gender === 'male') {
-    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
-  } else {
-    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
-  }
+    let bmr = 0;
+    if (gender === 'male') {
+      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    } else {
+      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+    }
 
-  const activityFactor = ACTIVITY_FACTORS[activityLevel];
-  const tdeeMaintenance = bmr * activityFactor;
-  const tdeeDaily = tdeeMaintenance * (GOAL_ADJUSTMENTS[goalType] || 1.0);
+    const activityFactor = ACTIVITY_FACTORS[activityLevel];
+    const tdeeMaintenance = bmr * activityFactor;
+    const tdeeDaily = tdeeMaintenance * (GOAL_ADJUSTMENTS[goalType] || 1.0);
 
-  safe.profile = {
-    heightCm: height,
-    weightKg: weight,
-    age: age,
-    gender: gender,
-    activityLevel: activityLevel,
-    goalType: goalType,
-    tdeeBmr: Math.round(bmr),
-    tdeeMaintenance: Math.round(tdeeMaintenance),
-    tdeeDaily: Math.round(tdeeDaily),
-    calorieTarget: Math.round(tdeeDaily),
-    macroPercentProtein: macroProtein,
-    macroPercentCarbs: macroCarbs,
-    macroPercentFats: macroFats
+    return {
+      heightCm: height,
+      weightKg: weight,
+      age,
+      gender,
+      activityLevel,
+      goalType,
+      tdeeBmr: Math.round(bmr),
+      tdeeMaintenance: Math.round(tdeeMaintenance),
+      tdeeDaily: Math.round(tdeeDaily),
+      calorieTarget: Math.round(tdeeDaily),
+      macroPercentProtein: macroProtein,
+      macroPercentCarbs: macroCarbs,
+      macroPercentFats: macroFats
+    };
+  };
+
+  const legacyProfile = raw.profile ? buildProfileFromRaw(raw.profile, safe.profiles.max) : null;
+  safe.profiles.max = buildProfileFromRaw(raw?.profiles?.max || legacyProfile || safe.profiles.max, safe.profiles.max);
+  safe.profiles.lili = buildProfileFromRaw(raw?.profiles?.lili || safe.profiles.lili, safe.profiles.lili);
+  safe.activeProfileId = PROFILE_CONFIG[raw?.activeProfileId] ? raw.activeProfileId : safe.activeProfileId;
+
+  safe.sync = {
+    url: String(raw?.sync?.url || "").trim(),
+    token: String(raw?.sync?.token || "")
   };
 
   safe.foods = Array.isArray(raw.foods) && raw.foods.length ? raw.foods : safe.foods;
@@ -890,15 +1146,16 @@ function computeProtein(food, quantity) {
 }
 
 function getCurrentTarget() {
-  const mode = (els.targetModeSelect?.value || state.profile.proteinTargetMode || "auto");
+  const profile = getActiveProfile();
+  const mode = (els.targetModeSelect?.value || profile.proteinTargetMode || "auto");
   if (mode === "auto") {
-    const weight = clampFloat((els.weightInput?.value || state.profile.weightKg), 30, 250);
-    const goal = (els.goalTypeSelect?.value || state.profile.goalType);
+    const weight = clampFloat((els.weightInput?.value || profile.weightKg), 30, 250);
+    const goal = (els.goalTypeSelect?.value || profile.goalType);
     const multiplier = GOAL_MULTIPLIERS[goal] || GOAL_MULTIPLIERS.maintain;
     return round(weight * multiplier, 0);
   }
 
-  return clampInt((els.manualTargetInput?.value || state.profile.proteinTargetValue || 140), 40, 400);
+  return clampInt((els.manualTargetInput?.value || profile.proteinTargetValue || 140), 40, 400);
 }
 
 function loadState() {
@@ -935,25 +1192,52 @@ function getDefaultState() {
   ];
 
   return {
-    profile: {
-      heightCm: 175,
-      weightKg: 70,
-      age: 30,
-      gender: "male",
-      activityLevel: "moderately_active",
-      goalType: "maintain",
-      tdeeBmr: 1700,
-      tdeeMaintenance: 2635,
-      tdeeDaily: 2635,
-      calorieTarget: 2635,
-      macroPercentProtein: 30,
-      macroPercentCarbs: 40,
-      macroPercentFats: 30
+    profiles: {
+      max: getDefaultProfileData("max"),
+      lili: getDefaultProfileData("lili")
+    },
+    activeProfileId: "max",
+    sync: {
+      url: "",
+      token: ""
     },
     foods: defaultFoods,
     entriesByDate: {},
     lastFoodId: defaultFoods[0].id
   };
+}
+
+function getDefaultProfileData(profileId) {
+  const base = {
+    heightCm: 175,
+    weightKg: 70,
+    age: 30,
+    gender: "male",
+    activityLevel: "moderately_active",
+    goalType: "maintain",
+    tdeeBmr: 1700,
+    tdeeMaintenance: 2635,
+    tdeeDaily: 2635,
+    calorieTarget: 2635,
+    macroPercentProtein: 30,
+    macroPercentCarbs: 40,
+    macroPercentFats: 30
+  };
+
+  if (profileId === "lili") {
+    return {
+      ...base,
+      heightCm: 165,
+      weightKg: 60,
+      age: 30,
+      gender: "female",
+      tdeeBmr: 1350,
+      tdeeMaintenance: 2093,
+      tdeeDaily: 2093
+    };
+  }
+
+  return base;
 }
 
 function saveState() {
@@ -1596,11 +1880,13 @@ function updateJournalDateButtonsState() {
 
 async function renderMealsForDate() {
   const dateStr = getDateString(currentDate);
+  const activeProfileId = getActiveProfileId();
   
   // Récupérer tous les repas pour ce jour
   const meals = await window.SuiviDB.db.repas
     .where('date')
     .equals(dateStr)
+    .and((meal) => meal.profileId === activeProfileId)
     .toArray();
 
   const mealsByType = {
@@ -1780,13 +2066,14 @@ function switchSelectionType(type) {
 
 async function saveMealItem() {
   const dateStr = getDateString(currentDate);
+  const activeProfileId = getActiveProfileId();
   const mealType = els.mealItemForm.dataset.mealType;
   const selectionType = document.querySelector('.selection-tab.active')?.dataset.selectionType || 'product';
 
   let repas = await window.SuiviDB.db.repas
     .where('date')
     .equals(dateStr)
-    .and(r => r.type === mealType)
+    .and((r) => r.type === mealType && r.profileId === activeProfileId)
     .first();
 
   // Créer le repas s'il n'existe pas
@@ -1794,6 +2081,7 @@ async function saveMealItem() {
     const repasId = await window.SuiviDB.db.repas.add({
       date: dateStr,
       type: mealType,
+      profileId: activeProfileId,
       totalCalories: 0,
       totalProtein: 0,
       totalCarbs: 0,

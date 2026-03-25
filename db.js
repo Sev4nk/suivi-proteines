@@ -29,6 +29,21 @@ db.version(1).stores({
   profil: '++id'
 });
 
+db.version(2).stores({
+  produits: '++id, name, category',
+  recettes: '++id, name',
+  recetteProduits: '++id, recetteId, produitId',
+  repas: '++id, date, type, profileId, [date+profileId], [date+type+profileId]',
+  repasElements: '++id, repasId, elementType, elementId',
+  profil: '++id'
+}).upgrade(async (tx) => {
+  await tx.table('repas').toCollection().modify((meal) => {
+    if (!meal.profileId) {
+      meal.profileId = 'max';
+    }
+  });
+});
+
 /**
  * Initialisation avec données par défaut
  */
@@ -148,7 +163,13 @@ async function migrateFromOldStorage() {
  * Exporte la DB pour sauvegarde
  */
 async function exportDatabase() {
-  const data = {
+  const data = await snapshotDatabase();
+  
+  return JSON.stringify(data, null, 2);
+}
+
+async function snapshotDatabase() {
+  return {
     produits: await db.produits.toArray(),
     recettes: await db.recettes.toArray(),
     recetteProduits: await db.recetteProduits.toArray(),
@@ -157,8 +178,31 @@ async function exportDatabase() {
     profil: await db.profil.toArray(),
     exportDate: new Date().toISOString()
   };
-  
-  return JSON.stringify(data, null, 2);
+}
+
+async function restoreDatabase(data) {
+  const snapshot = data || {};
+  await db.transaction('rw', db.produits, db.recettes, db.recetteProduits, db.repas, db.repasElements, db.profil, async () => {
+    await db.produits.clear();
+    await db.recettes.clear();
+    await db.recetteProduits.clear();
+    await db.repas.clear();
+    await db.repasElements.clear();
+    await db.profil.clear();
+
+    await db.produits.bulkPut(Array.isArray(snapshot.produits) ? snapshot.produits : []);
+    await db.recettes.bulkPut(Array.isArray(snapshot.recettes) ? snapshot.recettes : []);
+    await db.recetteProduits.bulkPut(Array.isArray(snapshot.recetteProduits) ? snapshot.recetteProduits : []);
+
+    const meals = Array.isArray(snapshot.repas) ? snapshot.repas.map((meal) => ({
+      ...meal,
+      profileId: meal.profileId || 'max'
+    })) : [];
+    await db.repas.bulkPut(meals);
+
+    await db.repasElements.bulkPut(Array.isArray(snapshot.repasElements) ? snapshot.repasElements : []);
+    await db.profil.bulkPut(Array.isArray(snapshot.profil) ? snapshot.profil : []);
+  });
 }
 
 /**
@@ -167,49 +211,7 @@ async function exportDatabase() {
 async function importDatabase(jsonData) {
   try {
     const data = JSON.parse(jsonData);
-    
-    // Importer chaque table
-    if (data.produits) {
-      for (const item of data.produits) {
-        delete item.id; // Laisser l'auto-increment générer les IDs
-        await db.produits.add(item);
-      }
-    }
-    
-    if (data.recettes) {
-      for (const item of data.recettes) {
-        delete item.id;
-        await db.recettes.add(item);
-      }
-    }
-    
-    if (data.recetteProduits) {
-      for (const item of data.recetteProduits) {
-        delete item.id;
-        await db.recetteProduits.add(item);
-      }
-    }
-    
-    if (data.repas) {
-      for (const item of data.repas) {
-        delete item.id;
-        await db.repas.add(item);
-      }
-    }
-    
-    if (data.repasElements) {
-      for (const item of data.repasElements) {
-        delete item.id;
-        await db.repasElements.add(item);
-      }
-    }
-    
-    if (data.profil) {
-      for (const item of data.profil) {
-        delete item.id;
-        await db.profil.add(item);
-      }
-    }
+    await restoreDatabase(data);
     
     console.log('✓ Import complété');
     return true;
@@ -271,6 +273,8 @@ if (typeof window !== 'undefined') {
     migrateFromOldStorage,
     exportDatabase,
     importDatabase,
+    snapshotDatabase,
+    restoreDatabase,
     testDatabase
   };
 }
