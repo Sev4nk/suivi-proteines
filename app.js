@@ -243,7 +243,7 @@ function saveSyncSettingsFromForm() {
 
   state.sync.url = String(els.syncUrlInput?.value || "").trim();
   state.sync.token = String(els.syncTokenInput?.value || "");
-  saveState();
+  saveState({ touchUpdatedAt: false });
 }
 
 function hasCloudSyncConfigured() {
@@ -278,18 +278,48 @@ function setSyncStatus(message, isError = false) {
   }
 }
 
-function getSyncHeaders() {
-  const headers = {
-    "Content-Type": "application/json"
-  };
-
-  const token = state?.sync?.token;
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-    headers["x-sync-token"] = token;
+function getSyncHeaders(method = "GET") {
+  // Use only simple headers to avoid CORS preflight fragility on some devices.
+  if (method === "POST") {
+    return {
+      "Content-Type": "text/plain;charset=UTF-8"
+    };
   }
 
-  return headers;
+  return {};
+}
+
+function buildSyncGetUrl(rawUrl) {
+  const base = String(rawUrl || "").trim();
+  if (!base) {
+    return "";
+  }
+
+  const token = String(state?.sync?.token || "");
+  const url = new URL(base, window.location.href);
+
+  // Add a unique query param to bypass stale intermediary/service-worker caches.
+  url.searchParams.set("_syncTs", String(Date.now()));
+  if (token) {
+    url.searchParams.set("token", token);
+  }
+
+  return url.toString();
+}
+
+function buildSyncPostUrl(rawUrl) {
+  const base = String(rawUrl || "").trim();
+  if (!base) {
+    return "";
+  }
+
+  const token = String(state?.sync?.token || "");
+  const url = new URL(base, window.location.href);
+  if (token) {
+    url.searchParams.set("token", token);
+  }
+
+  return url.toString();
 }
 
 async function pushCloudSync() {
@@ -316,9 +346,10 @@ async function pushCloudSync() {
       db: await window.SuiviDB.snapshotDatabase()
     };
 
-    const response = await fetch(url, {
+    const response = await fetch(buildSyncPostUrl(url), {
       method: "POST",
-      headers: getSyncHeaders(),
+      headers: getSyncHeaders("POST"),
+      cache: "no-store",
       body: JSON.stringify(payload)
     });
 
@@ -357,9 +388,10 @@ async function pullCloudSync() {
   try {
     isCloudSyncRunning = true;
     setSyncStatus("Chargement depuis cloud...");
-    const response = await fetch(url, {
+    const response = await fetch(buildSyncGetUrl(url), {
       method: "GET",
-      headers: getSyncHeaders()
+      headers: getSyncHeaders("GET"),
+      cache: "no-store"
     });
 
     if (!response.ok) {
@@ -369,14 +401,6 @@ async function pullCloudSync() {
     const payload = await response.json();
     if (!payload || !payload.state || !payload.db) {
       throw new Error("format invalide");
-    }
-
-    const localUpdatedAt = Date.parse(state?.updatedAt || "") || 0;
-    const cloudUpdatedAt = Date.parse(payload.state?.updatedAt || payload.updatedAt || "") || 0;
-
-    if (cloudUpdatedAt > 0 && cloudUpdatedAt <= localUpdatedAt) {
-      setSyncStatus(`Donnees locales deja a jour (${new Date().toLocaleTimeString("fr-FR")})`);
-      return true;
     }
 
     state = sanitizeState(payload.state);
@@ -424,9 +448,10 @@ async function syncCloudRoundTrip() {
       db: await window.SuiviDB.snapshotDatabase()
     };
 
-    const postResponse = await fetch(url, {
+    const postResponse = await fetch(buildSyncPostUrl(url), {
       method: "POST",
-      headers: getSyncHeaders(),
+      headers: getSyncHeaders("POST"),
+      cache: "no-store",
       body: JSON.stringify(payload)
     });
 
@@ -436,9 +461,10 @@ async function syncCloudRoundTrip() {
       throw new Error(`envoi HTTP ${postResponse.status}`);
     }
 
-    const getResponse = await fetch(url, {
+    const getResponse = await fetch(buildSyncGetUrl(url), {
       method: "GET",
-      headers: getSyncHeaders()
+      headers: getSyncHeaders("GET"),
+      cache: "no-store"
     });
 
     if (!getResponse.ok) {
@@ -567,7 +593,7 @@ async function init() {
   renderAll();
 
   if (hasCloudSyncConfigured()) {
-    await pullCloudSync();
+    setSyncStatus("Synchronisation auto desactivee: utilisez les boutons Charger/Envoyer.");
   }
 
   registerServiceWorker();
@@ -1384,8 +1410,11 @@ function getDefaultProfileData(profileId) {
   return base;
 }
 
-function saveState() {
-  state.updatedAt = new Date().toISOString();
+function saveState(options = {}) {
+  const touchUpdatedAt = options.touchUpdatedAt !== false;
+  if (touchUpdatedAt) {
+    state.updatedAt = new Date().toISOString();
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 

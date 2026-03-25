@@ -1,4 +1,4 @@
-const CACHE_NAME = "protein-tracker-cache-v5";
+const CACHE_NAME = "protein-tracker-cache-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -38,6 +38,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   const url = new URL(event.request.url);
+  const isCrossOrigin = url.origin !== self.location.origin;
+  const hasAuthHeaders = event.request.headers.has("Authorization") || event.request.headers.has("x-sync-token");
+  const shouldBypassCache = isCrossOrigin || hasAuthHeaders || event.request.cache === "no-store";
+
+  if (shouldBypassCache) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   const isCoreAsset = ["/index.html", "/styles.css", "/app.js", "/db.js"].some((path) =>
     url.pathname.endsWith(path)
   );

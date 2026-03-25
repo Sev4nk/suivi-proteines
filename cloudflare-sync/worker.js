@@ -20,7 +20,7 @@ export default {
     const storageKey = "protein_tracker_payload";
 
     if (request.method === "GET") {
-      const payload = await env.SYNC_STORE.get(storageKey);
+      const payload = await env.SYNC_STORE.get(storageKey, { cacheTtl: 0 });
       if (!payload) {
         return json(
           {
@@ -48,7 +48,8 @@ export default {
     if (request.method === "POST") {
       let body;
       try {
-        body = await request.json();
+        const rawBody = await request.text();
+        body = JSON.parse(rawBody);
       } catch {
         return json({ error: "invalid-json" }, 400, corsHeaders);
       }
@@ -58,7 +59,7 @@ export default {
       }
 
       const incomingUpdatedAtMs = Date.parse(String(body.updatedAt || "")) || 0;
-      const existingPayloadRaw = await env.SYNC_STORE.get(storageKey);
+      const existingPayloadRaw = await env.SYNC_STORE.get(storageKey, { cacheTtl: 0 });
       if (existingPayloadRaw) {
         try {
           const existingPayload = JSON.parse(existingPayloadRaw);
@@ -101,11 +102,19 @@ function isAuthorized(request, env) {
     return false;
   }
 
+  let queryToken = "";
+  try {
+    const url = new URL(request.url);
+    queryToken = (url.searchParams.get("token") || "").trim();
+  } catch {
+    queryToken = "";
+  }
+
   const auth = request.headers.get("Authorization") || "";
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   const alt = (request.headers.get("x-sync-token") || "").trim();
 
-  return bearer === expected || alt === expected;
+  return bearer === expected || alt === expected || queryToken === expected;
 }
 
 function json(payload, status, corsHeaders) {
