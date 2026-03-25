@@ -53,6 +53,7 @@ const els = {
   progressBarWrap: document.getElementById("progressBarWrap"),
   profileMaxBtn: document.getElementById("profileMaxBtn"),
   profileLiliBtn: document.getElementById("profileLiliBtn"),
+  syncToast: document.getElementById("syncToast"),
   activeProfileHint: document.getElementById("activeProfileHint"),
 
   tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
@@ -178,6 +179,7 @@ let currentDate = new Date();
 let currentMealType = null;
 let touchStartY = null;
 let isCloudSyncRunning = false;
+let syncToastTimer = null;
 
 function getActiveProfileId() {
   const profileId = state?.activeProfileId;
@@ -244,12 +246,36 @@ function saveSyncSettingsFromForm() {
   saveState();
 }
 
+function hasCloudSyncConfigured() {
+  return Boolean(state?.sync?.url && state?.sync?.token);
+}
+
 function setSyncStatus(message, isError = false) {
   if (!els.syncStatus) {
+    // Continue to toast even if profile tab is not rendered.
+  } else {
+    els.syncStatus.textContent = message;
+    els.syncStatus.style.color = isError ? "#b32f39" : "";
+  }
+
+  if (!els.syncToast) {
     return;
   }
-  els.syncStatus.textContent = message;
-  els.syncStatus.style.color = isError ? "#b32f39" : "";
+
+  els.syncToast.textContent = message;
+  els.syncToast.classList.toggle("error", isError);
+  els.syncToast.classList.add("show");
+
+  if (syncToastTimer) {
+    clearTimeout(syncToastTimer);
+    syncToastTimer = null;
+  }
+
+  if (!message.toLowerCase().includes("en cours")) {
+    syncToastTimer = setTimeout(() => {
+      els.syncToast?.classList.remove("show");
+    }, 3200);
+  }
 }
 
 function getSyncHeaders() {
@@ -524,6 +550,11 @@ async function init() {
   renderProfileForm();
   bindEvents();
   renderAll();
+
+  if (hasCloudSyncConfigured()) {
+    await syncCloudRoundTrip();
+  }
+
   registerServiceWorker();
   
   console.log('✓ App initialisée');

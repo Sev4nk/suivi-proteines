@@ -91,6 +91,7 @@ Requete d'envoi (POST):
 Mobile:
 
 - Tirer vers le bas tout en haut de la page lance une synchronisation complete: "Envoyer vers cloud" puis "Charger depuis cloud".
+- Si le navigateur fait un refresh natif complet de la page, l'app relance aussi automatiquement une synchronisation complete au demarrage (si URL + token sont renseignes).
 
 ### Option recommandee sans Vercel: Cloudflare Worker + KV
 

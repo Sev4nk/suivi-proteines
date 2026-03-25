@@ -118,6 +118,33 @@ body {
   background: linear-gradient(90deg, #c62841 0%, #e74b5f 100%);
 }
 
+.sync-toast {
+  position: sticky;
+  top: 4px;
+  z-index: 6;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(19, 115, 105, 0.92);
+  color: #f3fff9;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 10px 24px rgba(9, 34, 38, 0.2);
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.sync-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sync-toast.error {
+  background: rgba(179, 47, 57, 0.95);
+}
+
 .app-header h1 {
   margin: 0;
   font-size: clamp(2rem, 7vw, 3rem);
