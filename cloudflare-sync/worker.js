@@ -9,6 +9,15 @@ export default {
       "Vary": "Origin"
     };
 
+    try {
+      return await handleRequest(request, env, corsHeaders);
+    } catch (err) {
+      return json({ error: "internal", detail: String(err?.message || err) }, 500, corsHeaders);
+    }
+  }
+};
+
+async function handleRequest(request, env, corsHeaders) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
@@ -20,7 +29,7 @@ export default {
     const storageKey = "protein_tracker_payload";
 
     if (request.method === "GET") {
-      const payload = await env.SYNC_STORE.get(storageKey, { cacheTtl: 0 });
+      const payload = await env.SYNC_STORE.get(storageKey);
       if (!payload) {
         return json(
           {
@@ -59,7 +68,7 @@ export default {
       }
 
       const incomingUpdatedAtMs = Date.parse(String(body.updatedAt || "")) || 0;
-      const existingPayloadRaw = await env.SYNC_STORE.get(storageKey, { cacheTtl: 0 });
+      const existingPayloadRaw = await env.SYNC_STORE.get(storageKey);
       if (existingPayloadRaw) {
         try {
           const existingPayload = JSON.parse(existingPayloadRaw);
@@ -93,8 +102,7 @@ export default {
     }
 
     return json({ error: "method-not-allowed" }, 405, corsHeaders);
-  }
-};
+}
 
 function isAuthorized(request, env) {
   const expected = (env.SYNC_TOKEN || "").trim();
