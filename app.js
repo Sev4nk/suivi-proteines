@@ -1034,7 +1034,7 @@ function updateMacroTargets() {
   els.macroFatsTarget.textContent = fatsGrams.toFixed(0);
 }
 
-function saveProfileFromForm() {
+async function saveProfileFromForm() {
   const height = clampInt(els.heightInput.value, 100, 250);
   const weight = clampFloat(els.weightInput.value, 30, 250);
   const age = clampInt(els.ageInput.value, 12, 100);
@@ -1079,7 +1079,13 @@ function saveProfileFromForm() {
   updateProfileCalculations();
   renderSummary();
   renderJournalMacroProgress();
-  alert(`✓ Profil ${getActiveProfileLabel()} enregistré avec succès !`);
+
+  if (hasCloudSyncConfigured()) {
+    setSyncStatus(`Profil ${getActiveProfileLabel()} enregistré — envoi vers cloud...`);
+    await pushCloudSync();
+  } else {
+    alert(`✓ Profil ${getActiveProfileLabel()} enregistré avec succès !`);
+  }
 }
 
 function addEntry() {
